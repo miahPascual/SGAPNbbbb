@@ -357,7 +357,7 @@
   }
 
   .table-responsive {
-    overflow-x: auto;
+   
     font-size: 0.75rem;
   }
 
@@ -592,7 +592,7 @@ miah
 .year-level-badge-small {
   display: inline-block;
   background-color: rgba(255, 255, 255, 0.3);
-  color: white;
+  color: rgb(0, 0, 0);
   padding: 2px 6px;
   border-radius: 8px;
   font-size: 0.625rem;
@@ -700,12 +700,12 @@ miah
 }
 
 .btn-primary {
-  background-color: #3b82f6;
-  color: white;
+  background-color: #FFAB1F;
+  color: rgb(255, 255, 255);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background-color: #2563eb;
+  background-color: #b57f21;
   transform: translateY(-2px);
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
@@ -943,15 +943,19 @@ miah
 /* NEW: Enhanced Grid Table */
 .enhanced-grid-table {
   width: 100%;
-  border-collapse: separate;
+  border-collapse: collapse;
   border-spacing: 0;
   font-size: 0.875rem;
+  table-layout: fixed;       // fixes column width issues
 }
 
 .enhanced-grid-table thead {
   position: sticky;
   top: 0;
-  z-index: 10;
+  z-index: 100;
+   white-space: nowrap;       // prevents content from breaking
+  overflow: hidden;          // ensures no overlap
+  text-overflow: ellipsis;   // shows ... for overflow
 }
 
 .course-header, .time-header {
@@ -997,9 +1001,10 @@ miah
 }
 
 .course-name {
-  font-size: 1rem;
+  font-size: 10px;
+  align-self: center;
   font-weight: 700;
-  color: #1f2937;
+  color: white;
 }
 
 .year-badge {
@@ -1459,7 +1464,7 @@ miah
 
 /* Tables */
 .table-responsive {
-  overflow-x: auto;
+ 
   margin-top: 16px;
 }
 
@@ -1496,6 +1501,8 @@ miah
   width: 100%;
   border-collapse: collapse;
   font-size: 0.75rem;
+    table-layout: fixed; /* fixes column width alignment */
+
 }
 
 .timetable thead {
@@ -1512,13 +1519,16 @@ miah
   text-align: center;
   border: 1px solid #e5e7eb;
   min-width: 120px;
+   overflow: hidden;          /* prevents content overflow */
+  text-overflow: ellipsis;   /* shows ... if content too long */
+  white-space: nowrap;       /* keeps content on one line */
 }
 
 .sticky-col {
   position: sticky;
   left: 0;
   background-color: #294A70;
-  z-index: 5;
+  z-index: 15;  /* higher than cells but lower than header */
   font-weight: 600;
 }
 
@@ -1530,7 +1540,9 @@ miah
 .cell-content {
   padding: 4px;
   border-radius: 4px;
-  color: white;
+  color: rgb(0, 0, 0);
+    background-color: rgba(255, 255, 255, 0.3);
+
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1801,15 +1813,89 @@ miah
   padding: 3px;
   margin: 2px 0;
 }
-
-
-.sticky-col.course-header {
-  width: 120px; /* fixed */
-  
+/* Sticky left column */
+.sticky-col.course-year-cell {
+  position: sticky; /* Keep it fixed while scrolling */
+  left: 0;          /* Position it at the left edge */
+  z-index: 10;      /* Stay above other cells */
+  background-color: #294A70; /* Blue background */
+  color: white;     /* Text readable */
+  font-weight: 600;
+  padding: 10px;
 }
 
-.sticky-col.course-year-cell{
-color: #294A70;}
+/* Header of the sticky column */
+.sticky-col.course-header {
+  position: sticky;
+  left: 0;
+  top: 0;          /* Stick at top when scrolling vertically */
+  z-index: 12;     /* Above cells */
+  background-color: #1a73e8;
+  color: white;
+  width: 120px; /* fixed */
+
+}
+
+.table-wrapper {
+  width: 100%;
+  max-height: 80vh; /* vertical scroll limit */
+  overflow-y: auto;
+  position: relative;
+  border: 1px solid #ccc;
+}
+
+.table-scroll {
+  overflow-x: auto; /* horizontal scroll */
+}
+
+.enhanced-grid-table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 1200px; /* triggers horizontal scroll */
+}
+
+.sticky-col {
+  position: sticky;
+  left: 0;
+  background: #294a70;
+  color: white;
+  z-index: 2;
+}
+
+.course-header {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
+
+.time-header {
+  position: sticky;
+  top: 0;
+  background: #f1f1f1;
+  z-index: 1;
+}
+
+.course-year-cell {
+  background: #294a70;
+  color: white;
+}
+
+.exam-cell {
+  min-width: 120px;
+}
+
+.exam-card-header, .exam-card-body {
+  padding: 4px 6px;
+}
+
+.empty-slot {
+  text-align: center;
+  padding: 8px;
+  color: #888;
+}
+
+
+
 
 .time-header {
   width: 80px; /* smaller but enough for slot text */
@@ -2731,7 +2817,7 @@ color: #294A70;}
     align-items: center;
 
     &.active {
-      background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+      background: #294A70;
       color: white;
       font-weight: 600;
     }
@@ -2953,7 +3039,7 @@ color: #294A70;}
 }
 
 .btn-success {
-  background: linear-gradient(135deg, #10b981, #059669);
+  background: #294A70;
   color: white;
   border: none;
   padding: 10px 20px;
@@ -2972,7 +3058,7 @@ color: #294A70;}
 }
 
 .btn-warning {
-  background: linear-gradient(135deg, #f59e0b, #d97706);
+  background: linear-gradient(135deg, #b11f1f, #9b1010);
   color: white;
   border: none;
   padding: 10px 20px;
@@ -3689,12 +3775,7 @@ color: #294A70;}
     border-bottom: 2px solid #e5e7eb;
   }
 
-  /* Virtual Scroll Viewport */
-  .proctor-viewport {
-    height: 600px;
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
+  
 
   /* Body Table */
   .body-table {
@@ -3722,6 +3803,8 @@ color: #294A70;}
   /* Ensure columns align with headers */
   .enhanced-proctor-table {
     table-layout: fixed;
+     width: 100%;
+  border-collapse: collapse;
   }
 
   /* Compact form field */
@@ -3802,17 +3885,21 @@ color: #294A70;}
     padding: 4px !important;
   }
 
-  /* Responsive adjustments */
-  @media (max-width: 1400px) {
-    .proctor-viewport {
-      height: 500px;
-    }
-  }
+  /* Virtual Scroll Viewport */
+.proctor-viewport {
+  height: 600px;
+  overflow-y: auto;   /* enables vertical scroll */
+  overflow-x: auto;   /* enables horizontal scroll */
+  scroll-behavior: smooth;
+}
 
-  /* Smooth scrolling */
+/* Responsive adjustments */
+@media (max-width: 1400px) {
   .proctor-viewport {
-    scroll-behavior: smooth;
+    height: 500px;
   }
+}
+
 
   /* Loading state */
   .cdk-virtual-scroll-content-wrapper {
@@ -4097,13 +4184,20 @@ color: #294A70;}
   color: #92400e;
 }
 
+.table-responsive {
+  width: 100%;
+  
+  
+  max-height: 70vh;   /* optional, controls table height */
+}
+
 
 /* Make thead sticky */
 .enhanced-proctor-table thead.sticky-header {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background: #f8f9fa;
+   position: relative; /* or just remove the position property */
+  background: #294A70;
+  color: white;
+  z-index: 1;  /* optional, just to stay above table rows */
 }
 
 .enhanced-proctor-table thead.sticky-header th {
@@ -4113,6 +4207,8 @@ color: #294A70;}
   border-bottom: 2px solid #dee2e6;
   text-align: left;
   box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
+    color: white; /* text color for contrast */
+
   
 }
 
@@ -4123,25 +4219,19 @@ color: #294A70;}
   border-collapse: collapse;
 }
 
-/* Viewport scrolling */
-.proctor-viewport {
-  height: 600px;
-  overflow-y: auto;
-}
 
 .table-container {
   width: 100%;
   overflow-x: auto;
 }
 
-.table-header-wrapper,
-.proctor-viewport {
-  overflow-x: auto;
+.table-header-wrapper {
+  overflow: visible; /* header stays fixed in place */
 }
 
 .enhanced-proctor-table {
   table-layout: fixed;
-  width: 1480px; /* Total width: sum of all columns */
+  width: 100%; /* Total width: sum of all columns */
   border-collapse: collapse;
 }
 
@@ -4152,6 +4242,8 @@ color: #294A70;}
   white-space: nowrap;
   padding: 8px;
   box-sizing: border-box;
+   border: 1px solid #e5e7eb;
+  text-align: left;
 }
 
 .proctor-cell .compact-field {

@@ -101,6 +101,7 @@
     <h1 class="app-title"> Exam Scheduler</h1>
   </div>
 
+  
   <div class="nav-right">
     <button 
       class="nav-btn" 
@@ -258,7 +259,7 @@
     </div>
 
     <!-- Active Filters Display -->
-    <div class="active-filters" *ngIf="selectedGeneratedDept || selectedGeneratedCourse || selectedGeneratedYear">
+    <!-- <div class="active-filters" *ngIf="selectedGeneratedDept || selectedGeneratedCourse || selectedGeneratedYear">
       <span class="filter-label">Active Filters:</span>
       <span class="filter-chip" *ngIf="selectedGeneratedDept">
         <strong>Dept:</strong> {{ selectedGeneratedDept }}
@@ -272,7 +273,7 @@
         <strong>Year:</strong> {{ selectedGeneratedYear }}
         <button (click)="selectedGeneratedYear=null; applyGeneratedFilters()">✕</button>
       </span>
-    </div>
+    </div> -->
 
     <!-- Results Count -->
     <div class="results-info">
@@ -742,7 +743,7 @@
     && roomTimeData.table[activeDay][room][slot]
 " class="cell-content">
                 <strong>{{ roomTimeData.table[activeDay][room][slot].code }}</strong>
-                <small>{{ roomTimeData.table[activeDay][room][slot].course }}</small>
+                <!-- <small>{{ roomTimeData.table[activeDay][room][slot].course }}</small> -->
                 <span class="year-level-badge-small">Yr {{ roomTimeData.table[activeDay][room][slot].yearLevel }}</span>
               </div>
               <span *ngIf="!(
@@ -850,7 +851,8 @@
   </div>
 
   <!-- GRID TABLE -->
-  <div class="table-responsive">
+   <div class="table-wrapper">
+  <div class="table-scroll">
     <table class="enhanced-grid-table">
       <thead>
         <tr>
@@ -880,7 +882,6 @@
               </td>
 
               <td *ngFor="let slot of timeSlots" class="exam-cell">
-                <!-- HAS EXAMS -->
                 <ng-container *ngIf="yearObj.slots[slot]?.length > 0">
                   <div 
                     *ngFor="let exam of yearObj.slots[slot]" 
@@ -892,12 +893,8 @@
                         <mat-icon class="subject-icon">book</mat-icon>
                         <div class="subject-info">
                           <strong class="subject-id">{{ exam.SUBJECT_ID || exam.subjectId }}</strong>
-                          <span class="subject-title">
-                            {{ (exam.DESCRIPTIVE_TITLE || exam.title) | slice:0:30 }}{{ (exam.DESCRIPTIVE_TITLE || exam.title).length > 30 ? '...' : '' }}
-                          </span>
                         </div>
                       </div>
-                      <span class="year-badge-inline">Yr {{ exam.YEAR_LEVEL || exam.yearLevel }}</span>
                     </div>
 
                     <div class="exam-card-body">
@@ -913,12 +910,11 @@
 
                     <div class="exam-card-actions">
                       <button class="btn-icon-sm" [title]="'Move ' + exam.title" (click)="showMoveOptions(getFullExam(exam, activeDay, slot), activeDay, slot)">📍</button>
-                  <button class="btn-icon-sm" [title]="'Remove ' + exam.title" (click)="removeExamByTitle(exam.title)">🗑️</button>
-                </div>
+                      <button class="btn-icon-sm" [title]="'Remove ' + exam.title" (click)="removeExamByTitle(exam.title)">🗑️</button>
+                    </div>
                   </div>
                 </ng-container>
 
-                <!-- EMPTY SLOT -->
                 <div *ngIf="!yearObj.slots[slot] || yearObj.slots[slot].length === 0" class="empty-slot">
                   <mat-icon class="empty-icon">event_available</mat-icon>
                 </div>
@@ -929,6 +925,8 @@
       </tbody>
     </table>
   </div>
+</div>
+
 
   <!-- ACTION BUTTONS -->
   
@@ -1119,24 +1117,24 @@
     class="proctor-viewport"
     *ngIf="filteredProctorListEnhanced && filteredProctorListEnhanced.length > 0; else noData">
     
-    <table class="enhanced-proctor-table">
-      <!-- STICKY THEAD -->
-      <thead class="sticky-header">
-        <tr>
-          <th style="width: 80px; min-width: 80px; max-width: 80px;">Day</th>
-          <th style="width: 100px; min-width: 100px; max-width: 100px;">Time</th>
-          <th style="width: 80px; min-width: 80px; max-width: 80px;">Room</th>
-          <th style="width: 120px; min-width: 120px; max-width: 120px;">Code</th>
-          <th style="width: 150px; min-width: 150px; max-width: 150px;">Subject</th>
-          <th style="width: 100px; min-width: 100px; max-width: 100px;">Course</th>
-          <th style="width: 150px; min-width: 150px; max-width: 150px;">Program Dept</th>
-          <th style="width: 150px; min-width: 150px; max-width: 150px;">Instructor</th>
-          <th style="width: 100px; min-width: 100px; max-width: 100px;">Subject Dept</th>
-          <th style="width: 250px; min-width: 250px; max-width: 250px;">Assigned Proctor</th>
-          <th style="width: 80px; min-width: 80px; max-width: 80px;">Match</th>
-          <th style="width: 120px; min-width: 120px; max-width: 120px;">Status</th>
-        </tr>
-      </thead>
+   
+  <table class="enhanced-proctor-table">
+    <thead class="sticky-header">
+      <tr>
+        <th>Day</th>
+        <th>Time</th>
+        <th>Room</th>
+        <th>Code</th>
+        <th>Subject</th>
+        <th>Course</th>
+        <th>Program Dept</th>
+        <th>Instructor</th>
+        <th>Subject Dept</th>
+        <th>Assigned Proctor</th>
+        <th>Match</th>
+        <th>Status</th>
+      </tr>
+    </thead>
 
       <!-- SCROLLABLE TBODY -->
       <tbody>
@@ -1242,6 +1240,7 @@
         </tr>
       </tbody>
     </table>
+  
   </cdk-virtual-scroll-viewport>
 
   <!-- NO DATA TEMPLATE -->
