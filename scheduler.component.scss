@@ -256,6 +256,7 @@
   z-index: 8;
 }
 
+
 .enhanced-tabs {
   display: flex;
   gap: 12px;
@@ -428,7 +429,6 @@ mat-hint.success-hint {
 
 
 
-miah
 
 /* Container */
 .scheduler-container {
@@ -906,7 +906,7 @@ miah
 }
 
 .enhanced-tab.active .tab-day {
-  color: white;
+  color: #FFAB1F;
 }
 
 .tab-date {
@@ -918,7 +918,7 @@ miah
 }
 
 .enhanced-tab.active .tab-date {
-  color: rgba(255, 255, 255, 0.9);
+  color:  #FFAB1F;
 }
 
 .tab-date-placeholder {
@@ -931,7 +931,7 @@ miah
 }
 
 .enhanced-tab.active .tab-date-placeholder {
-  color: rgba(255, 255, 255, 0.7);
+  color: #FFAB1F;
 }
 
 .date-icon {
@@ -952,11 +952,10 @@ miah
 .enhanced-grid-table thead {
   position: sticky;
   top: 0;
-  z-index: 100;
-   white-space: nowrap;       // prevents content from breaking
-  overflow: hidden;          // ensures no overlap
-  text-overflow: ellipsis;   // shows ... for overflow
+  background: white; /* Required for float effect */
+  z-index: 1000;
 }
+
 
 .course-header, .time-header {
   background: #294A70;
@@ -1001,10 +1000,10 @@ miah
 }
 
 .course-name {
-  font-size: 10px;
+  font-size: 1rem;
   align-self: center;
-  font-weight: 700;
-  color: white;
+  font-weight: 1700;
+  color: #294A70;
 }
 
 .year-badge {
@@ -1500,7 +1499,7 @@ miah
 .timetable {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.75rem;
+  font-size: 1rem;
     table-layout: fixed; /* fixes column width alignment */
 
 }
@@ -1635,22 +1634,17 @@ miah
 }
 
 /* Tabs */
-.tabs {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 24px;
-  border-bottom: 2px solid #e5e7eb;
-}
+
 
 .tab {
   padding: 12px 24px;
-  background-color: transparent;
+  background-color: #294a70;
   border: none;
   border-bottom: 3px solid transparent;
   cursor: pointer;
   font-weight: 500;
   transition: all 0.2s;
-  color: #6b7280;
+  color: #ffffff
 }
 
 .tab:hover {
@@ -1658,8 +1652,8 @@ miah
 }
 
 .tab.active {
-  color: #3b82f6;
-  border-bottom-color: #3b82f6;
+  color: #FFAB1F;
+  border-bottom-color: #FFAB1F;
 }
 
 .badge {
@@ -1806,6 +1800,14 @@ miah
 .enhanced-grid-table td {
   padding: 4px 6px; /* smaller padding */
   font-size: 12px;  /* smaller font */
+    background: white;
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  
 }
 
 .enhanced-exam-card {
@@ -1828,10 +1830,10 @@ miah
 .sticky-col.course-header {
   position: sticky;
   left: 0;
-  top: 0;          /* Stick at top when scrolling vertically */
-  z-index: 12;     /* Above cells */
+  top: 60;          /* Stick at top when scrolling vertically */
+  z-index: 120;     /* Above cells */
   background-color: #1a73e8;
-  color: white;
+  color: transparent;
   width: 120px; /* fixed */
 
 }
@@ -1842,10 +1844,15 @@ miah
   overflow-y: auto;
   position: relative;
   border: 1px solid #ccc;
+  
+ 
 }
 
 .table-scroll {
   overflow-x: auto; /* horizontal scroll */
+  max-height: 600px;
+  overflow-y: auto;   /* horizontal + vertical scroll */
+  position: relative;
 }
 
 .enhanced-grid-table {
@@ -1859,13 +1866,14 @@ miah
   left: 0;
   background: #294a70;
   color: white;
-  z-index: 2;
+   top: 64px;   /* same offset */
+  z-index: 997;
 }
 
 .course-header {
   position: sticky;
   top: 0;
-  z-index: 3;
+  z-index: 80;
 }
 
 .time-header {
@@ -1929,6 +1937,7 @@ miah
   .sticky-col.course-header {
     width: 100px;
   }
+  
   .time-header {
     width: 60px;
   }
@@ -2040,11 +2049,6 @@ miah
   gap: 8px;
 }
 
-.summary-stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-}
 
 .stat-card {
   background: white;
@@ -3800,12 +3804,7 @@ miah
     text-align: left;
   }
 
-  /* Ensure columns align with headers */
-  .enhanced-proctor-table {
-    table-layout: fixed;
-     width: 100%;
-  border-collapse: collapse;
-  }
+  
 
   /* Compact form field */
   .compact-field {
@@ -3891,6 +3890,7 @@ miah
   overflow-y: auto;   /* enables vertical scroll */
   overflow-x: auto;   /* enables horizontal scroll */
   scroll-behavior: smooth;
+  
 }
 
 /* Responsive adjustments */
@@ -4014,16 +4014,12 @@ miah
   color: #374151;
 }
 
-/* Enhanced Proctor Table */
-.enhanced-proctor-table {
-  width: 100%;
-  border-collapse: collapse;
-}
+
 
 .enhanced-proctor-table th {
   background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
   color: white;
-  padding: 12px;
+  padding: 5px;
   text-align: left;
   font-weight: 600;
   font-size: 13px;
@@ -4031,7 +4027,7 @@ miah
 }
 
 .enhanced-proctor-table td {
-  padding: 12px;
+  padding: 5px;
   border-bottom: 1px solid #e5e7eb;
   font-size: 13px;
 }
@@ -4212,12 +4208,7 @@ miah
   
 }
 
-/* Ensure table layout is fixed for alignment */
-.enhanced-proctor-table {
-  width: 100%;
-  table-layout: fixed;
-  border-collapse: collapse;
-}
+
 
 
 .table-container {
@@ -4346,4 +4337,49 @@ miah
 
 .content-area {
   padding: 16px;
+}
+
+
+.enhanced-exam-card.multi-slot {
+  position: relative;
+  border-left: 4px solid #2196F3;
+}
+
+.enhanced-exam-card.multi-slot-start::after {
+  content: '▼';
+  position: absolute;
+  bottom: -2px;
+  right: 5px;
+  color: #2196F3;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.enhanced-exam-card.multi-slot-end::before {
+  content: '▲';
+  position: absolute;
+  top: -2px;
+  right: 5px;
+  color: #2196F3;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.multi-slot-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: rgba(33, 150, 243, 0.2);
+  color: #2196F3;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  margin-left: 4px;
+  font-weight: 500;
+}
+
+.multi-slot-badge .badge-icon {
+  font-size: 12px;
+  width: 12px;
+  height: 12px;
 }
