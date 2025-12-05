@@ -1045,8 +1045,15 @@
         matInput 
         [(ngModel)]="proctorSearchQuery"
         (ngModelChange)="applyProctorFilters()"
-        placeholder="Search by code, room, instructor, day, subject, or department"
+        placeholder="Search by code, room, instructor, day, subject"
       />
+      
+      <mat-select 
+  [(ngModel)]="selectedProctorDept"
+  (selectionChange)="applyProctorFilters()">
+  <!-- options -->
+</mat-select>
+
       <button mat-icon-button matSuffix *ngIf="proctorSearchQuery" (click)="proctorSearchQuery=''; applyProctorFilters()">
         <mat-icon>close</mat-icon>
       </button>
@@ -1054,7 +1061,7 @@
   </div>
 
   <!-- Department & Subject Filters -->
-  <div class="filter-row">
+  <!-- <div class="filter-row">
     <div class="filter-group">
       <mat-form-field appearance="outline">
         <mat-label>🏛️ Filter by Program Department</mat-label>
@@ -1104,7 +1111,7 @@
       <mat-icon>clear_all</mat-icon>
       Clear Filters
     </button>
-  </div>
+  </div> -->
 
   <!-- Toggle Smart Suggestions -->
   <div class="filter-row">
@@ -1151,9 +1158,17 @@
       <tbody>
         <tr *cdkVirtualFor="let exam of filteredProctorListEnhanced; trackBy: trackByExamCode">
           <td style="width: 80px; min-width: 80px; max-width: 80px;">{{ exam.DAY }}</td>
-          <td style="width: 100px; min-width: 100px; max-width: 100px;">{{ exam.SLOT }}</td>
+          <td style="width: 100px; min-width: 100px; max-width: 100px;">{{ getMergedSlotForDisplay(exam) }}</td>
           <td style="width: 80px; min-width: 80px; max-width: 80px;"><strong>{{ exam.ROOM }}</strong></td>
-          <td style="width: 120px; min-width: 120px; max-width: 120px;"><strong>{{ exam.CODE }}</strong></td>
+
+          <td style="width: 120px; min-width: 120px; max-width: 120px;">
+  <strong>{{ exam.CODE }}</strong>
+  <span *ngIf="exam.SECTIONS_COUNT && exam.SECTIONS_COUNT > 1" 
+        class="section-badge"
+        [title]="'Sections: ' + exam.GROUPED_CODES?.join(', ')">
+    {{ exam.SECTIONS_COUNT }} sections
+  </span>
+</td>
           <td style="width: 150px; min-width: 150px; max-width: 150px;" class="truncate" [title]="exam.DESCRIPTIVE_TITLE">
             {{ exam.SUBJECT_ID }}
           </td>

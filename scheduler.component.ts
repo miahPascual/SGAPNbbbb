@@ -22,6 +22,7 @@ interface Exam {
   course: string;
   yearLevel: number;
   lec: number;
+  lab: number;
   oe: number;
   dept: string;
   deptCode: string;
@@ -513,7 +514,7 @@ get filteredSchedule(): ScheduledExam[] {
 
   combineYearTerm() {
     const currentYear = new Date().getFullYear();
-    for (let y = currentYear - 1; y <= currentYear + 1; y++) {
+    for (let y = currentYear - 2; y <= currentYear + 1; y++) {
       const nextYear = y + 1;
       for (const t of this.termOptions) {
         const label = `${t.value} ${y}-${nextYear}`;
@@ -676,7 +677,8 @@ loadExamData() {
           course: (obj.course || '').trim(),
           yearLevel: obj.yearLevel !== undefined && obj.yearLevel !== null ? obj.yearLevel : 1,
           lec: parseInt(obj.lecUnits || 3),
-          oe: parseInt(obj.labUnits || 0),
+          lab: parseInt(obj.labUnits || 0),
+         oe: parseInt(obj.oe || 0),
           dept: obj.dept || '',
           deptCode: obj.deptCode || '',
           instructor: obj.instructor || ''
@@ -1686,6 +1688,7 @@ moveExam(exam: ScheduledExam, newDay: string, newSlot: string) {
         instructor: exam.INSTRUCTOR,
         dept: exam.DEPT,
         lec: 0,
+        lab: 0,
         oe: exam.OE || 0,
         version: ''
       };
@@ -1770,6 +1773,7 @@ moveExam(exam: ScheduledExam, newDay: string, newSlot: string) {
       instructor: exam.INSTRUCTOR,
       dept: exam.DEPT,
       lec: 0,
+      lab: 0,
       oe: exam.OE || 0,
       version: ''
     };
@@ -2481,28 +2485,28 @@ assignProc(exam: ScheduledExam, proctor: string) {
 
 
 // 8. GETTER: Filtered proctor list
-get filteredProctorList(): ScheduledExam[] {
-  const query = (this.proctorSearchQuery || '').toLowerCase().trim();
+// get filteredProctorList(): ScheduledExam[] {
+//   const query = (this.proctorSearchQuery || '').toLowerCase().trim();
   
-  if (!query) {
-    return this.generatedSchedule;
-  }
+//   if (!query) {
+//     return this.generatedSchedule;
+//   }
   
-  return this.generatedSchedule.filter(exam => {
-    const searchable = [
-      exam.CODE,
-      exam.DESCRIPTIVE_TITLE,
-      exam.COURSE,
-      exam.INSTRUCTOR,
-      exam.PROCTOR,
-      exam.ROOM,
-      exam.DAY,
-      exam.SUBJECT_ID
-    ].map(s => (s || '').toLowerCase()).join(' ');
+//   return this.generatedSchedule.filter(exam => {
+//     const searchable = [
+//       exam.CODE,
+//       exam.DESCRIPTIVE_TITLE,
+//       exam.COURSE,
+//       exam.INSTRUCTOR,
+//       exam.PROCTOR,
+//       exam.ROOM,
+//       exam.DAY,
+//       exam.SUBJECT_ID
+//     ].map(s => (s || '').toLowerCase()).join(' ');
     
-    return searchable.includes(query);
-  });
-}
+//     return searchable.includes(query);
+//   });
+// }
 
 
 // generateCourseGridData() {
@@ -2869,11 +2873,13 @@ generateExamSchedule() {
     return;
   }
 
+  
+
   const allRooms = this.rooms.length > 0 ? this.rooms.sort() : ['A', 'C', 'K', 'L', 'M', 'N'];
   const roomsList = this.getAvailableRooms(allRooms);
   
-  console.log(`📍 Available rooms (${roomsList.length}):`, roomsList);
-  console.log(`🚫 Restricted rooms (${this.restrictedRooms.length}):`, this.restrictedRooms);
+  console.log(` Available rooms (${roomsList.length}):`, roomsList);
+  console.log(` Restricted rooms (${this.restrictedRooms.length}):`, this.restrictedRooms);
   
   const schedule: ScheduledExam[] = [];
 
@@ -2888,9 +2894,16 @@ generateExamSchedule() {
     courseGroups[course].push(exam);
   });
 
-  // Track already scheduled exams by subject+title
-  const subjectTitleSlot: { [key: string]: { day: string; slots: string[]; codes: Set<string> } } = {};
-  
+
+  // Track already scheduled exams by subject+title (WITH ROOM)
+const subjectTitleSlot: { 
+  [key: string]: { 
+    day: string; 
+    slots: string[]; 
+    room: string; 
+    codes: Set<string> 
+  } 
+} = {};
   // Track merged exams by subject+title+code
   const subjectTitleCodeSlot: { [key: string]: boolean } = {};
 
@@ -2934,7 +2947,7 @@ generateExamSchedule() {
         continue;
       }
 
-      const totalUnits = (exam.lec || 0) + (exam.oe || 0);
+      const totalUnits = (exam.lec || 0) + (exam.lab || 0);
       const slotsNeeded = totalUnits >= 6 ? 2 : 1;
 
       let day = '';
@@ -2947,7 +2960,8 @@ generateExamSchedule() {
         const existing = subjectTitleSlot[subjectTitleKey];
         day = existing.day;
         slots = [...existing.slots];
-        
+          assignedRoom = ''; // ⭐ USE SAME ROOM
+
         console.log(`📌 Grouping ${code} with existing ${Array.from(existing.codes).join(', ')} on ${day} ${slots.join(',')}`);
         
         existing.codes.add(code);
@@ -2984,7 +2998,7 @@ generateExamSchedule() {
             }
           }
           
-          // ⭐ ENHANCED: Filter out slots that are consecutive to already-scheduled ones
+         
           // Also ensure we don't pick slots that would CREATE consecutive exams
           const usedSlots = courseSlotsByDay[course][candidateDay];
           const safeSlots: string[] = [];
@@ -3121,26 +3135,26 @@ generateExamSchedule() {
         // Move to next slot position for next exam
         globalSlotIndex = (globalSlotIndex + slotsNeeded) % this.timeSlots.length;
 
-        // Store this new subject+title group
-        subjectTitleSlot[subjectTitleKey] = { 
-          day, 
-          slots, 
-          codes: new Set([code]) 
-        };
+        
         
         console.log(`🆕 New group for ${code}: ${day} ${slots.join(',')} | Non-consecutive: ${foundSafeSlot}`);
       }
 
+ // Mark this specific code as scheduled
+      subjectTitleCodeSlot[subjectTitleCodeKey] = true;
+
       // CRITICAL: Multi-slot exams (6+ units) must use THE SAME ROOM across all slots
       // CRITICAL: Multi-slot exams (6+ units) must use THE SAME ROOM across all slots
 if (slotsNeeded > 1) {
+
+   if (!assignedRoom) {
   // Assign a room once for the exam
   assignedRoom = this.getFirstAvailableRoom(day, slots, roomsList);
   if (!assignedRoom) {
     console.error(`❌ No room available for multi-slot exam ${exam.code} on ${day}`);
     assignedRoom = 'TBD';
   }
-
+   }
   // Create one entry per slot with same room
   slots.forEach((slot, index) => {
     schedule.push({
@@ -3186,7 +3200,14 @@ if (slotsNeeded > 1) {
     TOTAL_SLOTS: 1
   });
 }
-
+if (!subjectTitleSlot[subjectTitleKey]) {
+        subjectTitleSlot[subjectTitleKey] = { 
+          day, 
+          slots, 
+          room: assignedRoom,
+          codes: new Set([code]) 
+        };
+      }
 
 
       if (!assignedRoom) {
@@ -3194,25 +3215,25 @@ if (slotsNeeded > 1) {
         assignedRoom = 'TBD';
       }
 
-// Compute merged slot ONCE
-let mergedSlot = '';
-if (slots.length === 1) {
-  mergedSlot = slots[0];
-} else {
-  const firstSlot = slots[0];
-  const lastSlot = slots[slots.length - 1];
+// // Compute merged slot ONCE
+// let mergedSlot = '';
+// if (slots.length === 1) {
+//   mergedSlot = slots[0];
+// } else {
+//   const firstSlot = slots[0];
+//   const lastSlot = slots[slots.length - 1];
 
-  if (firstSlot.includes('-') && lastSlot.includes('-')) {
-    const startTime = firstSlot.split('-')[0].trim();
-    const endTime = lastSlot.split('-')[1].trim();
-    mergedSlot = `${startTime} - ${endTime}`;
-  } else {
-    mergedSlot = slots.join(' - ');
-  }
-}
+//   if (firstSlot.includes('-') && lastSlot.includes('-')) {
+//     const startTime = firstSlot.split('-')[0].trim();
+//     const endTime = lastSlot.split('-')[1].trim();
+//     mergedSlot = `${startTime} - ${endTime}`;
+//   } else {
+//     mergedSlot = slots.join(' - ');
+//   }
+// }
 
-// Optional: save in exam object
-exam['MERGED_SLOT'] = mergedSlot;
+// // Optional: save in exam object
+// exam['MERGED_SLOT'] = mergedSlot;
 
 
       // schedule.push({
@@ -3872,6 +3893,7 @@ applyMove(newDay: string, newSlot: string) {
         instructor: exam.INSTRUCTOR,
         dept: exam.DEPT,
         lec: 0,
+        lab: 0,
         oe: exam.OE || 0,
         version: ''
       };
@@ -4062,6 +4084,7 @@ editUnscheduledExam(exam: Exam) {
     instructor: exam.instructor,
     dept: exam.dept,
     lec: exam.lec || 0,
+    lab: exam.lab || 0,
     oe: exam.oe || 0,
     version: exam.version || ''
   };
@@ -4091,6 +4114,8 @@ saveAndRescheduleExam() {
     instructor: this.editFormData.instructor,
     dept: this.editFormData.dept,
     lec: this.editFormData.lec || 0,
+   lab: this.editFormData.lec || 0,
+
     oe: this.editFormData.oe || 0,
     version: this.editFormData.version || ''
   };
@@ -4129,7 +4154,7 @@ scheduleUnscheduledExam(exam: Exam) {
 
   let day = '';
   let slots: string[] = [];
-  const totalUnits = (exam.lec || 0) + (exam.oe || 0);
+  const totalUnits = (exam.lec || 0) + (exam.lab || 0);
   const slotsNeeded = totalUnits >= 6 ? 2 : 1;
 
   for (const dayOption of this.days) {
@@ -4572,14 +4597,16 @@ private filterDebounceTimer: any;
 
 computeFilteredProctorList() {
   // Clear existing timer
-  if (this.filterDebounceTimer) {
-    clearTimeout(this.filterDebounceTimer);
-  }
+  // if (this.filterDebounceTimer) {
+  //   clearTimeout(this.filterDebounceTimer);
+  // }
   
-  // Debounce filtering by 300ms
-  this.filterDebounceTimer = setTimeout(() => {
-    this.executeFiltering();
-  }, 300);
+  // // Debounce filtering by 300ms
+  // this.filterDebounceTimer = setTimeout(() => {
+  //   this.executeFiltering();
+  // }, 300);
+   this.executeFiltering();
+  this.cd.detectChanges(); // Force UI update
 }
 
 private executeFiltering() {
@@ -4636,9 +4663,20 @@ private executeFiltering() {
   console.log(`Filtered: ${filtered.length} / ${this.generatedSchedule.length} exams`);
 }
 
+// get filteredProctorListEnhanced(): ScheduledExam[] {
+//   console.log('Getting filtered list, length:', this._filteredProctorList.length);
+//   return this._filteredProctorList;
+// }
+
 get filteredProctorListEnhanced(): ScheduledExam[] {
   console.log('Getting filtered list, length:', this._filteredProctorList.length);
-  return this._filteredProctorList;
+  
+  // Filter out duplicate multi-slot entries (show only first slot)
+  const uniqueExams = this._filteredProctorList.filter(exam => 
+    !exam.IS_MULTI_SLOT || exam.SLOT_INDEX === 0
+  );
+  
+  return uniqueExams;
 }
 
 // 7. OPTIMIZED: Assign proctor (only updates affected slot)
@@ -4790,6 +4828,23 @@ async autoAssignAllProctors() {
     const busyProctors = new Set<string>();
 
     examsInSlot.forEach(exam => {
+
+        // ⭐ NEW: If this is a continuation of a multi-slot exam, use the same proctor
+  if (exam.IS_MULTI_SLOT && exam.SLOT_INDEX > 0) {
+    // Find the first slot of this exam
+    const firstSlotExam = this.generatedSchedule.find(e => 
+      e.CODE === exam.CODE && 
+      e.IS_MULTI_SLOT && 
+      e.SLOT_INDEX === 0
+    );
+    
+    if (firstSlotExam && firstSlotExam.PROCTOR) {
+      exam.PROCTOR = firstSlotExam.PROCTOR;
+      stats.assigned++;
+      return; // Skip normal assignment logic
+    }
+  }
+
       const examSubject = exam.SUBJECT_ID ? exam.SUBJECT_ID.toUpperCase().trim() : "";
       const examDept = exam.DEPT ? exam.DEPT.toUpperCase().trim() : "";
       const instructorUpper = exam.INSTRUCTOR ? exam.INSTRUCTOR.toUpperCase().trim() : "";
@@ -4963,8 +5018,20 @@ clearProctorFilters() {
 // 14. Apply filters (debounced)
 applyProctorFilters() {
   this.computeFilteredProctorList();
+    this.executeFiltering();
+  this.cd.detectChanges();
 }
 
+onProctorSearchChange() {
+  if (this.filterDebounceTimer) {
+    clearTimeout(this.filterDebounceTimer);
+  }
+  
+  this.filterDebounceTimer = setTimeout(() => {
+    this.executeFiltering();
+    this.cd.detectChanges();
+  }, 300);
+}
 // 15. Toggle suggestions
 onSmartSuggestionsToggle(event: any) {
   this.cd.detectChanges();
@@ -5031,7 +5098,32 @@ ngAfterViewInit() {
 }
 
 
-
+// Get merged time slot for display (used in both Generated and Proctor views)
+getMergedSlotForDisplay(exam: ScheduledExam): string {
+  // If not multi-slot, return regular slot
+  if (!exam.IS_MULTI_SLOT) {
+    return exam.SLOT;
+  }
+  
+  // Find all slots for this exam
+  const allSlots = this.generatedSchedule
+    .filter(e => e.CODE === exam.CODE && e.IS_MULTI_SLOT)
+    .sort((a, b) => (a.SLOT_INDEX || 0) - (b.SLOT_INDEX || 0))
+    .map(e => e.SLOT);
+  
+  if (allSlots.length <= 1) {
+    return exam.SLOT;
+  }
+  
+  // Merge the time range
+  const firstSlot = allSlots[0];
+  const lastSlot = allSlots[allSlots.length - 1];
+  
+  const startTime = firstSlot.split('-')[0].trim();
+  const endTime = lastSlot.split('-')[1].trim();
+  
+  return `${startTime}-${endTime}`;
+}
 
 
 }
