@@ -2635,7 +2635,7 @@ private restrictedRooms: string[] = [
   'A-102', 'A-203', 'A-204', 'A-205', 'A-219', 'A-221',
   'A-225', 'A-226', 'A-234', 'A-302', 'A-306', 'A-308',
   'A-309', 'A-310', 'A-311', 'A-312', 'EMC', 'Hosp', 'Molec', 'Nutri', 
-  'Pharm', 'SMTL', 'TBA', 'Virtu', 'to be', 'BTL', 'BUL', 'DemoR'
+  'Pharm', 'SMTL', 'TBA', 'Virtu', 'to be', 'BTL', 'BUL', 'DemoR', 'TBD'
 
 ];
 
@@ -3301,6 +3301,16 @@ const instructorStatus = exam.instructorClassificationStatus ? exam.instructorCl
               console.log(`⏰ Part-time instructor ${exam.instructor} - restricted to slots: ${availableSlots.join(', ')}`);
             }
           }
+
+          // Allied = subjects with multiple sections (minor subjects)
+const sectionCount = subjectSectionCount[subjectTitleKey] || 1;
+const isAlliedCourse = sectionCount > 1; // Has multiple sections = Allied/Minor
+
+if (isAlliedCourse) {
+  availableSlots = availableSlots.filter(t => !t.startsWith('7:30'));
+  console.log(`📚 Allied course ${subjectId} (${sectionCount} sections) - no 7:30 AM slot`);
+}
+
           
           // Last day morning-only restriction
           if (candidateDay === lastDay) {
@@ -3380,7 +3390,12 @@ const instructorStatus = exam.instructorClassificationStatus ? exam.instructorCl
                 availableSlots = this.timeSlots.slice(partTimeStartIndex);
               }
             }
-            
+            const sectionCount = subjectSectionCount[subjectTitleKey] || 1;
+    const isAlliedCourse = sectionCount > 1;
+    if (isAlliedCourse) {
+      availableSlots = availableSlots.filter(t => !t.startsWith('7:30'));
+    }
+
             if (candidateDay === lastDay) {
               availableSlots = this.getMorningSlots(availableSlots);
               if (availableSlots.length === 0) continue;
@@ -4702,19 +4717,12 @@ async precomputeAllProctorSuggestions() {
   this.allProctorsMap.clear();
   this.processingCancelled = false;
   
-  const allInstructors = Array.from(
+// In precomputeAllProctorSuggestions - keep it simple:
+const allInstructors = Array.from(
   new Set(
     this.generatedSchedule
       .map(e => e.INSTRUCTOR ? e.INSTRUCTOR.toUpperCase().trim() : "")
-      .filter(i => {
-        if (!i) return false;
-        const upper = i.toUpperCase().trim();
-        return upper !== 'UNASSIGNED' && 
-               upper !== '(UNASSIGNED)' && 
-               upper !== 'TBD' &&
-               upper !== 'UNDEFINED' &&
-               upper !== 'NULL';
-      })
+      .filter(i => i) // Only filter empty strings
   )
 );
 
@@ -4805,21 +4813,11 @@ private processProctorChunk(chunk: ScheduledExam[], allInstructors: string[]) {
     });
     
     // Categorize available instructors
-    allInstructors.forEach(instructor => {
-      // ⭐ CRITICAL: Skip invalid instructors
-      const instructorUpper = instructor.toUpperCase().trim();
-      if (!instructor || 
-          instructorUpper === 'UNASSIGNED' || 
-          instructorUpper === '(UNASSIGNED)' ||
-          instructorUpper === 'TBD' ||
-          instructorUpper === 'UNDEFINED' ||
-          instructorUpper === 'NULL') {
-        return; // Skip this instructor
-      }
-      
-      if (busyProctors.has(instructor)) return;
-      
-      allAvailable.push(instructor);
+    // In processProctorChunk - remove the "Unassigned" check:
+allInstructors.forEach(instructor => {
+  if (busyProctors.has(instructor)) return;
+  
+  allAvailable.push(instructor);
       
       const instructorDept = this.instructorDepartments.get(instructor) || '';
       const instructorSubjects = this.instructorSubjects.get(instructor) || new Set();
@@ -4883,11 +4881,23 @@ getSmartProctorSuggestions(exam: ScheduledExam): {
   const cached = this.proctorSuggestionsMap.get(exam.CODE);
   if (!cached) return { sameSubject: [], sameDept: [], available: [] };
   
-  // ⭐ NEW: Filter out "unassigned" from all categories
-  const filterValid = (list: string[]) => list.filter(p => {
-    const pUpper = p.toUpperCase().trim();
-    return p && pUpper !== 'UNASSIGNED' && pUpper !== 'TBD';
-  });
+  const currentProctor = exam.PROCTOR ? exam.PROCTOR.toUpperCase().trim() : '';
+  
+  // Filter out "Unassigned" from suggestions
+  const filterValid = (list: string[]) => {
+    return list.filter(p => {
+      if (!p) return false;
+      const pUpper = p.toUpperCase().trim();
+      
+      // Keep if it's the current proctor
+      if (pUpper === currentProctor) return true;
+      
+      // Filter out "Unassigned" variants
+      return pUpper !== 'UNASSIGNED' && 
+             pUpper !== '(UNASSIGNED)' &&
+             pUpper !== 'TBD';
+    });
+  };
   
   return {
     sameSubject: filterValid(cached.sameSubject),
@@ -4906,13 +4916,21 @@ getAllProctorsForDropdown(exam: ScheduledExam): string[] {
   const cached = this.allProctorsMap.get(exam.CODE);
   if (!cached) return ['No available instructor'];
   
-  // ⭐ NEW: Filter out invalid proctors
+  // ⭐ Filter out "Unassigned" from NEW selections only
+  // But if the exam already has "Unassigned" as current proctor, keep it
+  const currentProctor = exam.PROCTOR ? exam.PROCTOR.toUpperCase().trim() : '';
+  
   const validProctors = cached.filter(p => {
+    if (!p) return false;
     const pUpper = p.toUpperCase().trim();
-    return p && 
-           pUpper !== 'UNASSIGNED' && 
-           pUpper !== 'TBD' && 
-           pUpper !== 'NO AVAILABLE INSTRUCTOR';
+    
+    // Allow current proctor even if it's "Unassigned"
+    if (pUpper === currentProctor) return true;
+    
+    // Filter out "Unassigned" for new selections
+    return pUpper !== 'UNASSIGNED' && 
+           pUpper !== '(UNASSIGNED)' &&
+           pUpper !== 'TBD';
   });
   
   return validProctors.length > 0 ? validProctors : ['No available instructor'];
@@ -5033,13 +5051,20 @@ get filteredProctorListEnhanced(): ScheduledExam[] {
 
 // 7. OPTIMIZED: Assign proctor (only updates affected slot)
 assignProctorSmart(exam: ScheduledExam, proctor: string) {
-  if (!proctor || proctor === 'No available instructor' || proctor === '') {
-    this.showToast('Error', 'Please select a valid proctor', 'destructive');
+  // ⭐ NEW: Prevent assigning "Unassigned" or "TBD"
+  const proctorUpper = proctor ? proctor.toUpperCase().trim() : '';
+  
+  if (!proctor || 
+      proctor === 'No available instructor' || 
+      proctor === '' ||
+      proctorUpper === 'UNASSIGNED' ||
+      proctorUpper === '(UNASSIGNED)' ||
+      proctorUpper === 'TBD') {
+    this.showToast('Error', 'Cannot assign "Unassigned" or "TBD" as proctor. Please select a valid instructor.', 'destructive');
     return;
   }
   
   const previousProctor = exam.PROCTOR;
-  const proctorUpper = proctor.toUpperCase().trim();
   
   const conflict = this.generatedSchedule.find(e =>
     e !== exam &&
@@ -5177,9 +5202,7 @@ async autoAssignAllProctors() {
         const upper = i.toUpperCase().trim();
         return upper !== 'UNASSIGNED' && 
                upper !== '(UNASSIGNED)' && 
-               upper !== 'TBD' &&
-               upper !== 'UNDEFINED' &&
-               upper !== 'NULL';
+               upper !== 'TBD' ;
       })
   )
 );
@@ -5208,6 +5231,18 @@ async autoAssignAllProctors() {
       const examSubject = exam.SUBJECT_ID ? exam.SUBJECT_ID.toUpperCase().trim() : "";
       const examDept = exam.DEPT ? exam.DEPT.toUpperCase().trim() : "";
       const instructorUpper = exam.INSTRUCTOR ? exam.INSTRUCTOR.toUpperCase().trim() : "";
+
+
+      if (!instructorUpper || 
+      instructorUpper === 'UNASSIGNED' || 
+      instructorUpper === '(UNASSIGNED)' ||
+      instructorUpper === 'TBD') {
+    exam.PROCTOR = 'TBD';
+    exam.HAS_CONFLICT = true;
+    stats.conflict++;
+    return; // Skip to next exam
+  }
+
 
       if (!busyProctors.has(instructorUpper)) {
         exam.PROCTOR = exam.INSTRUCTOR;
