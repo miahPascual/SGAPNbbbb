@@ -4394,3 +4394,312 @@ mat-hint.success-hint {
   margin-left: 8px;
   font-weight: 500;
 }
+
+
+// Conflict Panel
+.conflict-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: fadeIn 0.3s;
+}
+
+.conflict-panel {
+  background: white;
+  border-radius: 12px;
+  max-width: 900px;
+  width: 90%;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.3s;
+}
+
+.conflict-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 2px solid #e5e7eb;
+  
+  h2 {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0;
+    color: #ef4444;
+    
+    mat-icon {
+      font-size: 28px;
+      width: 28px;
+      height: 28px;
+    }
+  }
+}
+
+.btn-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #6b7280;
+  padding: 4px 8px;
+  border-radius: 4px;
+  
+  &:hover {
+    background: #f3f4f6;
+    color: #111827;
+  }
+}
+
+.conflict-content {
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.conflict-section {
+  margin-bottom: 32px;
+  
+  &.critical {
+    border: 2px solid #ef4444;
+    padding: 16px;
+    border-radius: 8px;
+    background: #fef2f2;
+  }
+  
+  h3 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #ef4444;
+    margin: 0 0 8px 0;
+    
+    .conflict-icon {
+      font-size: 24px;
+      width: 24px;
+      height: 24px;
+    }
+  }
+  
+  .conflict-description {
+    color: #6b7280;
+    margin: 0 0 16px 0;
+    font-size: 14px;
+    
+    &.critical-text {
+      color: #dc2626;
+      font-weight: 600;
+    }
+  }
+}
+
+.conflict-item {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.conflict-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f3f4f6;
+  
+  strong {
+    color: #111827;
+    font-size: 16px;
+  }
+  
+  .conflict-time {
+    background: #fef3c7;
+    color: #92400e;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 500;
+  }
+}
+
+.conflict-exams {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.conflict-exam-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: #f9fafb;
+  border-radius: 6px;
+  font-size: 14px;
+  
+  .exam-code {
+    font-weight: 600;
+    color: #3b82f6;
+    min-width: 80px;
+  }
+  
+  .exam-title {
+    flex: 1;
+    color: #374151;
+  }
+  
+  .exam-room, .exam-course {
+    color: #6b7280;
+    font-size: 13px;
+  }
+}
+
+.no-conflicts {
+  text-align: center;
+  padding: 48px 24px;
+  
+  .success-icon {
+    font-size: 64px;
+    width: 64px;
+    height: 64px;
+    color: #22c55e;
+    margin-bottom: 16px;
+  }
+  
+  h3 {
+    color: #22c55e;
+    margin: 0 0 8px 0;
+  }
+  
+  p {
+    color: #6b7280;
+    margin: 0;
+  }
+}
+
+// Conflict highlighting in tables
+.conflict-row {
+  background-color: #fef2f2 !important;
+  
+  &:hover {
+    background-color: #fee2e2 !important;
+  }
+}
+
+
+.conflict-indicator {
+  color: #ef4444;
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  vertical-align: middle;
+  margin-right: 4px;
+  cursor: help;
+}
+
+.conflict-indicator-small {
+  color: #ef4444;
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+
+// Badge for conflict count
+.badge {
+  background: #ef4444;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-left: 8px;
+}
+
+// Animations
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+
+
+/* Add these styles to your component's CSS */
+
+.room-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.room-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  color: #666;
+}
+
+.room-icon.recommended {
+  color: #fbbf24; /* yellow-400 */
+}
+
+.recommended-text {
+  font-weight: 600;
+  color: #1f2937; /* gray-800 */
+}
+
+.room-badge {
+  margin-left: auto;
+  padding: 2px 8px;
+  background-color: #dbeafe; /* blue-100 */
+  color: #1e40af; /* blue-800 */
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* Highlight recommended options in the dropdown */
+::ng-deep .mat-option:has(.room-icon.recommended) {
+  background-color: #fffbeb !important; /* amber-50 */
+  border-left: 3px solid #fbbf24; /* yellow-400 */
+}
+
+::ng-deep .mat-option:has(.room-icon.recommended):hover {
+  background-color: #fef3c7 !important; /* amber-100 */
+}
+
+.success-hint {
+  color: #059669; /* green-600 */
+}
+
+.warning-hint {
+  color: #dc2626; /* red-600 */
+}
+
+.text-danger {
+  color: #d9534f;
+  font-weight: bold;
+}

@@ -214,6 +214,26 @@ private allProctorsMap = new Map<string, string[]>();
 private _filteredProctorList: ScheduledExam[] = [];
 private processingCancelled = false;
 
+// Conflict detection
+conflictDetails: {
+  proctorConflicts: Array<{
+    proctor: string;
+    day: string;
+    slot: string;
+    exams: ScheduledExam[];
+  }>;
+  roomConflicts: Array<{
+    room: string;
+    day: string;
+    slot: string;
+    exams: ScheduledExam[];
+  }>;
+} = {
+  proctorConflicts: [],
+  roomConflicts: []
+};
+
+showConflictPanel: boolean = false;
 
 
   constructor(
@@ -721,81 +741,238 @@ loadExamData() {
     return false;
   }
 
-  assignRoomByDepartment(exam: Exam, usedRoomsSet: Set<string>, roomsList: string[]): string | null {
-    const deptCode = exam.dept ? exam.deptCode.toUpperCase() : '';
-    const course = exam.course ? exam.course.toUpperCase() : '';
+  // assignRoomByDepartment(exam: Exam, usedRoomsSet: Set<string>, roomsList: string[]): string | null {
+  //   const deptCode = exam.dept ? exam.deptCode.toUpperCase() : '';
+  //   const course = exam.course ? exam.course.toUpperCase() : '';
 
-    let preferredPrefixes: string[] = [];
+  //   let preferredPrefixes: string[] = [];
 
-    if (deptCode === 'SABH' || deptCode === 'SECAP') {
-      preferredPrefixes = ['A'];
-    } else if (course.startsWith('BSA')) {
-      preferredPrefixes = ['C', 'K'];
-    } else if (deptCode === 'SACE') {
-      preferredPrefixes = ['N', 'K'];
-    } else if (deptCode === 'SHAS') {
-      preferredPrefixes = ['M', 'L'];
-    }
+  //   if (deptCode === 'SABH' || deptCode === 'SECAP') {
+  //     preferredPrefixes = ['A'];
+  //   } else if (course.startsWith('BSA')) {
+  //     preferredPrefixes = ['C', 'K'];
+  //   } else if (deptCode === 'SACE') {
+  //     preferredPrefixes = ['N', 'K'];
+  //   } else if (deptCode === 'SHAS') {
+  //     preferredPrefixes = ['M', 'L'];
+  //   }
 
-    let availableRoom = roomsList.find(r =>
-        r.includes('-') &&            
-      preferredPrefixes.some(prefix => r.startsWith(prefix)) &&
-      !usedRoomsSet.has(r)
-    );
+  //   let availableRoom = roomsList.find(r =>
+  //       r.includes('-') &&            
+  //     preferredPrefixes.some(prefix => r.startsWith(prefix)) &&
+  //     !usedRoomsSet.has(r)
+  //   );
 
-    if (!availableRoom) {
-      availableRoom = roomsList.find(r => 
-        r.includes('-') &&  
-        !usedRoomsSet.has(r));
-    }
+  //   if (!availableRoom) {
+  //     availableRoom = roomsList.find(r => 
+  //       r.includes('-') &&  
+  //       !usedRoomsSet.has(r));
+  //   }
 
     
 
-    return availableRoom || null;
-  }
+  //   return availableRoom || 'TBD';
+  // }
 
 
- getFreeRoomForSlot(exam: Exam, day: string, slot: string, roomsList: string[]): string {
-  const slotKey = `${day}_${slot}`;
+  assignRoomByDepartment(exam: Exam, usedRoomsSet: Set<string>, roomsList: string[]): string | null {
+  const deptCode = exam.deptCode ? exam.deptCode.toUpperCase() : '';
+const course = exam.course ? exam.course.toUpperCase() : '';
+  // Define department-based room prefixes
+  let preferredPrefixes: string[] = [];
+  if (deptCode === 'SABH' ) preferredPrefixes = ['A'];
+  else if (deptCode === 'SECAP') preferredPrefixes = ['N', 'M', 'A', 'L', 'C', 'K'];
+  else if (course.startsWith('BSA')) preferredPrefixes = ['C', 'K'];
+  else if (deptCode === 'SACE') preferredPrefixes = ['N', 'K'];
+  else if (deptCode === 'SHAS') preferredPrefixes = ['M', 'L', 'N'];
 
-  if (!this.usedRoomsPerSlot[slotKey]) {
-    this.usedRoomsPerSlot[slotKey] = new Set<string>();
-  }
+  // 1️⃣ Try rooms that match department rules AND not used yet
+  let room = roomsList.find(r => 
+    preferredPrefixes.some(p => r.startsWith(p)) &&
+    !usedRoomsSet.has(r)
+  );
 
-  const roomsAlreadyUsed = this.usedRoomsPerSlot[slotKey];
-  const room = this.assignRoomByDepartment(exam, roomsAlreadyUsed, roomsList) || '';
-
-  // Mark room as used for this slot
-  if (room) roomsAlreadyUsed.add(room);
+  // 2️⃣ If no room available in preferred prefixes, mark as TBD (do not pick random room)
+  if (!room) room = 'TBD';
 
   return room;
 }
 
+// Add this method to filter available rooms based on department preferences
+// Add this method to filter available rooms based on department preferences
+getAvailableRoomsForExam(exam: ScheduledExam, day: string, slot: string): string[] {
+  if (!day || !slot) return [];
 
+  const deptCode = exam.DEPT ? exam.DEPT.toUpperCase() : '';
+  const course = exam.COURSE ? exam.COURSE.toUpperCase() : '';
+
+  // Define department-based room prefixes
+  let preferredPrefixes: string[] = [];
+  if (deptCode === 'SABH') {
+    preferredPrefixes = ['A'];
+  } else if (deptCode === 'SECAP') {
+    preferredPrefixes = ['N', 'M', 'A', 'L', 'C', 'K'];
+  } else if (course.startsWith('BSA')) {
+    preferredPrefixes = ['C', 'K'];
+  } else if (deptCode === 'SACE') {
+    preferredPrefixes = ['N', 'K'];
+  } else if (deptCode === 'SHAS') {
+    preferredPrefixes = ['M', 'L', 'N'];
+  }
+
+  // Get all rooms for this day/slot that aren't already assigned
+  const usedRoomsForSlot = new Set<string>();
+  this.generatedSchedule.forEach(e => {
+    if (e.DAY === day && e.SLOT === slot && e.ROOM && e.ROOM !== 'TBD') {
+      // Don't mark current exam's room as used (allow keeping same room)
+      if (e.CODE !== exam.CODE) {
+        usedRoomsForSlot.add(e.ROOM);
+      }
+    }
+  });
+
+  // Get all available rooms from your rooms list
+  const allRooms = this.rooms || []; // Adjust based on your rooms array name
+
+  // Filter rooms: not used AND match department preferences (if any)
+  let availableRooms = allRooms.filter(room => !usedRoomsForSlot.has(room));
+
+  // If department has preferred prefixes, prioritize those rooms
+  if (preferredPrefixes.length > 0) {
+    const preferredRooms = availableRooms.filter(room =>
+      preferredPrefixes.some(prefix => room.startsWith(prefix))
+    );
+
+    // If preferred rooms exist, show them first
+    if (preferredRooms.length > 0) {
+      // Show preferred rooms first, then other available rooms
+      const otherRooms = availableRooms.filter(room =>
+        !preferredPrefixes.some(prefix => room.startsWith(prefix))
+      );
+      return [...preferredRooms, ...otherRooms];
+    }
+  }
+
+  return availableRooms;
+}
+
+// Update your onEditSlotChange method to use the new logic
+onEditSlotChange(): void {
+  if (!this.editedExam || !this.editedExam.DAY || !this.editedExam.SLOT) {
+    this.availableRooms = [];
+    return;
+  }
+
+  // Use the new department-aware room filtering
+  this.availableRooms = this.getAvailableRoomsForExam(
+    this.editedExam,
+    this.editedExam.DAY,
+    this.editedExam.SLOT
+  );
+
+  // Clear room selection if current room is no longer available
+  if (this.editedExam.ROOM && !this.availableRooms.includes(this.editedExam.ROOM)) {
+    this.editedExam.ROOM = '';
+  }
+}
+
+// Optional: Add a method to show room recommendations in the UI
+getRoomRecommendation(exam: ScheduledExam, room: string): string {
+  const deptCode = exam.DEPT ? exam.DEPT.toUpperCase() : '';
+  const course = exam.COURSE ? exam.COURSE.toUpperCase() : '';
+
+  let preferredPrefixes: string[] = [];
+  if (deptCode === 'SABH') preferredPrefixes = ['A'];
+  else if (deptCode === 'SECAP') preferredPrefixes = ['N', 'M', 'A', 'L', 'C', 'K'];
+  else if (course.startsWith('BSA')) preferredPrefixes = ['C', 'K'];
+  else if (deptCode === 'SACE') preferredPrefixes = ['N', 'K'];
+  else if (deptCode === 'SHAS') preferredPrefixes = ['M', 'L', 'N'];
+
+  if (preferredPrefixes.length > 0 && preferredPrefixes.some(p => room.startsWith(p))) {
+    return '⭐ Recommended for ' + deptCode;
+  }
+  return '';
+}
+
+hasRecommendedRooms(exam: ScheduledExam): boolean {
+  if (!this.availableRooms || this.availableRooms.length === 0) return false;
+  
+  return this.availableRooms.some(room => 
+    this.getRoomRecommendation(exam, room) !== ''
+  );
+}
+
+//  getFreeRoomForSlot(exam: Exam, day: string, slot: string, roomsList: string[]): string {
+//   const slotKey = `${day}_${slot}`;
+
+//   if (!this.usedRoomsPerSlot[slotKey]) {
+//     this.usedRoomsPerSlot[slotKey] = new Set<string>();
+//   }
+
+//   const roomsAlreadyUsed = this.usedRoomsPerSlot[slotKey];
+//   const room = this.assignRoomByDepartment(exam, roomsAlreadyUsed, roomsList) || '';
+
+//   // Mark room as used for this slot
+//   if (room) roomsAlreadyUsed.add(room);
+
+//   return room;
+// }
+
+getFreeRoomForSlot(exam: Exam, day: string, slot: string, roomsList: string[]): string {
+  const key = `${day}_${slot}`;
+  if (!this.usedRoomsPerSlot[key]) this.usedRoomsPerSlot[key] = new Set();
+  const room = this.assignRoomByDepartment(exam, this.usedRoomsPerSlot[key], roomsList);
+  if (room !== 'TBD') this.usedRoomsPerSlot[key].add(room);
+  return room;
+}
+
+
+// getFreeRoomForMultiSlot(exam: Exam, day: string, slots: string[], roomsList: string[]): string {
+//   const usedRoomsPerThisMultiSlot = new Set<string>();
+  
+//   // Check which rooms are used in ANY of the slots
+//   for (const slot of slots) {
+//     const key = `${day}_${slot}`;
+//     if (!this.usedRoomsPerSlot[key]) {
+//       this.usedRoomsPerSlot[key] = new Set();
+//     }
+//     this.usedRoomsPerSlot[key].forEach(room => usedRoomsPerThisMultiSlot.add(room));
+//   }
+
+//   // Find a room that's free in ALL slots
+//   let assignedRoom = this.assignRoomByDepartment(exam, usedRoomsPerThisMultiSlot, roomsList) || '';
+
+//   // Mark this room as used for ALL slots
+//   if (assignedRoom) {
+//     for (const slot of slots) {
+//       const key = `${day}_${slot}`;
+//       if (!this.usedRoomsPerSlot[key]) {
+//         this.usedRoomsPerSlot[key] = new Set();
+//       }
+//       this.usedRoomsPerSlot[key].add(assignedRoom);
+//     }
+//   }
+
+//   return assignedRoom;
+// }
 
 getFreeRoomForMultiSlot(exam: Exam, day: string, slots: string[], roomsList: string[]): string {
   const usedRoomsPerThisMultiSlot = new Set<string>();
   
-  // Check which rooms are used in ANY of the slots
+  // Collect all rooms used in any of the slots
   for (const slot of slots) {
     const key = `${day}_${slot}`;
-    if (!this.usedRoomsPerSlot[key]) {
-      this.usedRoomsPerSlot[key] = new Set();
-    }
-    this.usedRoomsPerSlot[key].forEach(room => usedRoomsPerThisMultiSlot.add(room));
+    if (!this.usedRoomsPerSlot[key]) this.usedRoomsPerSlot[key] = new Set();
+    this.usedRoomsPerSlot[key].forEach(r => usedRoomsPerThisMultiSlot.add(r));
   }
 
-  // Find a room that's free in ALL slots
-  let assignedRoom = this.assignRoomByDepartment(exam, usedRoomsPerThisMultiSlot, roomsList) || '';
+  // Assign a room based on department rules
+  const assignedRoom = this.assignRoomByDepartment(exam, usedRoomsPerThisMultiSlot, roomsList);
 
-  // Mark this room as used for ALL slots
-  if (assignedRoom) {
+  // Mark this room as used in all slots
+  if (assignedRoom !== 'TBD') {
     for (const slot of slots) {
-      const key = `${day}_${slot}`;
-      if (!this.usedRoomsPerSlot[key]) {
-        this.usedRoomsPerSlot[key] = new Set();
-      }
-      this.usedRoomsPerSlot[key].add(assignedRoom);
+      this.usedRoomsPerSlot[`${day}_${slot}`].add(assignedRoom);
     }
   }
 
@@ -803,55 +980,226 @@ getFreeRoomForMultiSlot(exam: Exam, day: string, slots: string[], roomsList: str
 }
 
 
-
   // NEW: Detect proctor conflicts
-  detectProctorConflicts() {
-    this.conflictingExams = [];
-    this.availableProctors.clear();
+  // detectProctorConflicts() {
+  //   this.conflictingExams = [];
+  //   this.availableProctors.clear();
 
-    // Group exams by day and slot
-    const examsByDaySlot: { [key: string]: ScheduledExam[] } = {};
+  //   // Group exams by day and slot
+  //   const examsByDaySlot: { [key: string]: ScheduledExam[] } = {};
     
-    this.generatedSchedule.forEach(exam => {
-      const key = `${exam.DAY}|${exam.SLOT}`;
-      if (!examsByDaySlot[key]) {
-        examsByDaySlot[key] = [];
-      }
-      examsByDaySlot[key].push(exam);
-    });
+  //   this.generatedSchedule.forEach(exam => {
+  //     const key = `${exam.DAY}|${exam.SLOT}`;
+  //     if (!examsByDaySlot[key]) {
+  //       examsByDaySlot[key] = [];
+  //     }
+  //     examsByDaySlot[key].push(exam);
+  //   });
 
-    // Check for conflicts (instructor teaching multiple classes at same time)
-    Object.values(examsByDaySlot).forEach(examsInSlot => {
-      const instructorCount: { [instructor: string]: number } = {};
+  //   // Check for conflicts (instructor teaching multiple classes at same time)
+  //   Object.values(examsByDaySlot).forEach(examsInSlot => {
+  //     const instructorCount: { [instructor: string]: number } = {};
       
-      examsInSlot.forEach(exam => {
-        const instructor = exam.INSTRUCTOR.toUpperCase().trim();
-        instructorCount[instructor] = (instructorCount[instructor] || 0) + 1;
-      });
+  //     examsInSlot.forEach(exam => {
+  //       const instructor = exam.INSTRUCTOR.toUpperCase().trim();
+  //       instructorCount[instructor] = (instructorCount[instructor] || 0) + 1;
+  //     });
 
-      // Mark exams with conflicts
-      examsInSlot.forEach(exam => {
-        const instructor = exam.INSTRUCTOR.toUpperCase().trim();
-        if (instructorCount[instructor] > 1) {
-          exam.HAS_CONFLICT = true;
-          this.conflictingExams.push(exam);
+  //     // Mark exams with conflicts
+  //     examsInSlot.forEach(exam => {
+  //       const instructor = exam.INSTRUCTOR.toUpperCase().trim();
+  //       if (instructorCount[instructor] > 1) {
+  //         exam.HAS_CONFLICT = true;
+  //         this.conflictingExams.push(exam);
           
-          // Find available substitute proctors
-          this.findAvailableProctors(exam);
-        } else {
-          exam.HAS_CONFLICT = false;
+  //         // Find available substitute proctors
+  //         this.findAvailableProctors(exam);
+  //       } else {
+  //         exam.HAS_CONFLICT = false;
+  //       }
+  //     });
+  //   });
+
+  //   if (this.conflictingExams.length > 0) {
+  //     this.showToast(
+  //       'Proctor Conflicts Detected',
+  //       `${this.conflictingExams.length} exams have proctor conflicts. Please assign substitute proctors.`,
+  //       'warning'
+  //     );
+  //   }
+  // }
+// NEW: Detect only PROCTOR conflicts (for Proctor Assignment view)
+detectProctorConflicts() {
+  console.log('🔍 Detecting proctor conflicts...');
+  
+  // Reset
+  this.conflictingExams = [];
+  this.availableProctors.clear();
+  
+  // Reset only proctor conflicts
+  this.conflictDetails.proctorConflicts = [];
+
+  // Group exams by day and slot
+  const examsByDaySlot: { [key: string]: ScheduledExam[] } = {};
+  
+  this.generatedSchedule.forEach(exam => {
+    const key = `${exam.DAY}|${exam.SLOT}`;
+    if (!examsByDaySlot[key]) {
+      examsByDaySlot[key] = [];
+    }
+    examsByDaySlot[key].push(exam);
+  });
+
+  let totalProctorConflicts = 0;
+
+  // Check ONLY for PROCTOR conflicts
+  Object.entries(examsByDaySlot).forEach(([key, examsInSlot]) => {
+    const [day, slot] = key.split('|');
+    
+    const proctorCount: { [proctor: string]: ScheduledExam[] } = {};
+    examsInSlot.forEach(exam => {
+      if (exam.PROCTOR && exam.PROCTOR !== 'TBD') {
+        const proctor = exam.PROCTOR.toUpperCase().trim();
+        if (!proctorCount[proctor]) {
+          proctorCount[proctor] = [];
         }
-      });
+        proctorCount[proctor].push(exam);
+      }
     });
 
-    if (this.conflictingExams.length > 0) {
-      this.showToast(
-        'Proctor Conflicts Detected',
-        `${this.conflictingExams.length} exams have proctor conflicts. Please assign substitute proctors.`,
-        'warning'
-      );
-    }
+    Object.entries(proctorCount).forEach(([proctor, exams]) => {
+      if (exams.length > 1) {
+        totalProctorConflicts++;
+        this.conflictDetails.proctorConflicts.push({
+          proctor,
+          day,
+          slot,
+          exams
+        });
+        
+        exams.forEach(exam => {
+          exam.HAS_CONFLICT = true;
+          if (!this.conflictingExams.includes(exam)) {
+            this.conflictingExams.push(exam);
+          }
+        });
+        
+        console.warn(`⚠️ Proctor conflict: ${proctor} assigned to ${exams.length} exams at ${day} ${slot}`);
+      }
+    });
+  });
+
+  console.log(`\n📊 Proctor Conflicts: ${totalProctorConflicts}`);
+
+  if (totalProctorConflicts > 0) {
+    this.showToast(
+      'Proctor Conflicts Detected',
+      `${totalProctorConflicts} proctor conflict(s) found.`,
+      'warning'
+    );
   }
+}
+// NEW: Detect only ROOM conflicts (for Generated Schedule view)
+detectScheduleConflicts() {
+  console.log('🔍 Detecting schedule conflicts (rooms + TBD)...');
+  
+  // Reset conflicts for generate view
+  this.conflictDetails.roomConflicts = [];
+
+  // Clear HAS_CONFLICT flag first
+  this.generatedSchedule.forEach(exam => {
+    exam.HAS_CONFLICT = false;
+  });
+
+  // Group exams by day and slot
+  const examsByDaySlot: { [key: string]: ScheduledExam[] } = {};
+  
+  this.generatedSchedule.forEach(exam => {
+    const key = `${exam.DAY}|${exam.SLOT}`;
+    if (!examsByDaySlot[key]) {
+      examsByDaySlot[key] = [];
+    }
+    examsByDaySlot[key].push(exam);
+  });
+
+  let totalRoomConflicts = 0;
+  let totalTBDRooms = 0;
+
+  // Check for ROOM conflicts (same room, same time)
+  Object.entries(examsByDaySlot).forEach(([key, examsInSlot]) => {
+    const [day, slot] = key.split('|');
+    
+    const roomCount: { [room: string]: ScheduledExam[] } = {};
+    examsInSlot.forEach(exam => {
+      const room = exam.ROOM.toUpperCase().trim();
+      if (room && room !== 'TBD' && room !== 'PLEASE ASSIGN ROOM') {
+        if (!roomCount[room]) {
+          roomCount[room] = [];
+        }
+        roomCount[room].push(exam);
+      }
+    });
+
+    // Mark room conflicts
+    Object.entries(roomCount).forEach(([room, exams]) => {
+      if (exams.length > 1) {
+        totalRoomConflicts++;
+        this.conflictDetails.roomConflicts.push({
+          room,
+          day,
+          slot,
+          exams
+        });
+        
+        exams.forEach(exam => {
+          exam.HAS_CONFLICT = true;
+        });
+        
+        console.error(`🚨 ROOM CONFLICT: Room ${room} assigned to ${exams.length} exams at ${day} ${slot}`);
+      }
+    });
+  });
+
+  // Check for TBD/missing rooms
+  this.generatedSchedule.forEach(exam => {
+    const room = exam.ROOM.toUpperCase().trim();
+    if (!room || room === 'TBD' || room === 'PLEASE ASSIGN ROOM') {
+      exam.HAS_CONFLICT = true;
+      totalTBDRooms++;
+    }
+  });
+
+  console.log(`\n📊 Schedule Conflicts:`);
+  console.log(`  - Room Conflicts: ${totalRoomConflicts}`);
+  console.log(`  - TBD/Missing Rooms: ${totalTBDRooms}`);
+
+  if (totalRoomConflicts > 0) {
+    this.showToast(
+      'Room Conflicts Detected',
+      `${totalRoomConflicts} room conflict(s) found. Same room assigned to multiple exams.`,
+      'warning'
+    );
+  }
+
+  if (totalTBDRooms > 0) {
+    this.showToast(
+      'Missing Rooms',
+      `${totalTBDRooms} exam(s) need room assignment.`,
+      'warning'
+    );
+  }
+}
+
+
+getTotalConflicts(): number {
+  // Show only relevant conflicts based on current view
+  if (this.currentStep === 'generate') {
+    return this.conflictDetails.roomConflicts.length;
+  } else if (this.currentStep === 'proctor') {
+    return this.conflictDetails.proctorConflicts.length;
+  }
+  return 0;
+}
 
 
  
@@ -1255,42 +1603,76 @@ isExamBeingEdited(exam: ScheduledExam): boolean {
 }
 
 
+// startEdit(displayIndex: number) {
+//   console.log('=== startEdit called ===');
+//   console.log('Display index:', displayIndex);
+
+//   // Get exam from filtered list (what user sees)
+//   const examToEdit = this.filteredSchedule[displayIndex];
+
+//   if (!examToEdit) {
+//     console.error('❌ Exam not found at display index:', displayIndex);
+//     return;
+//   }
+
+//   const examKey = this.getExamKey(examToEdit);
+//   console.log('🔑 Exam key:', examKey);
+//   console.log('📋 Exam to edit:', examToEdit);
+
+//   // Find in original schedule for reference
+//   const originalIndex = this.generatedSchedule.findIndex(
+//     e => this.getExamKey(e) === examKey
+//   );
+
+//   if (originalIndex === -1) {
+//     console.error('❌ Exam not found in generatedSchedule');
+//     return;
+//   }
+
+//   console.log('✅ Found at real index:', originalIndex);
+
+//   // Store the KEY (not index) to track what's being edited
+//   this.editingExamKey = examKey;
+
+//   // Create a clean copy for editing
+//   this.editedExam = JSON.parse(JSON.stringify(examToEdit));
+
+//   console.log('✏️ Edit mode started for:', this.editingExamKey);
+//   console.log('Exam data:', this.editedExam);
+
+//   // Load available options
+//   this.availableSlots = [];
+//   this.availableRooms = [];
+//   this.onEditDayChange();
+
+//   if (this.editedExam.DAY && this.editedExam.SLOT) {
+//     this.onEditSlotChange();
+//   }
+// }
+
+
 startEdit(displayIndex: number) {
   console.log('=== startEdit called ===');
   console.log('Display index:', displayIndex);
 
-  // Get exam from filtered list (what user sees)
-  const examToEdit = this.filteredSchedule[displayIndex];
+  // Get exam from DISPLAYED list (already filtered for first slots only)
+  const examToEdit = this.displayedSchedule[displayIndex];
 
   if (!examToEdit) {
     console.error('❌ Exam not found at display index:', displayIndex);
     return;
   }
 
-  const examKey = this.getExamKey(examToEdit);
-  console.log('🔑 Exam key:', examKey);
   console.log('📋 Exam to edit:', examToEdit);
 
-  // Find in original schedule for reference
-  const originalIndex = this.generatedSchedule.findIndex(
-    e => this.getExamKey(e) === examKey
-  );
-
-  if (originalIndex === -1) {
-    console.error('❌ Exam not found in generatedSchedule');
-    return;
-  }
-
-  console.log('✅ Found at real index:', originalIndex);
-
-  // Store the KEY (not index) to track what's being edited
-  this.editingExamKey = examKey;
+  // Store the DISPLAY index (not the real index)
+  // This allows us to highlight the correct row in the table
+  this.editingRow = displayIndex;
 
   // Create a clean copy for editing
   this.editedExam = JSON.parse(JSON.stringify(examToEdit));
 
-  console.log('✏️ Edit mode started for:', this.editingExamKey);
-  console.log('Exam data:', this.editedExam);
+  console.log('✏️ Edit mode started for display index:', this.editingRow);
 
   // Load available options
   this.availableSlots = [];
@@ -1301,8 +1683,6 @@ startEdit(displayIndex: number) {
     this.onEditSlotChange();
   }
 }
-
- 
 
   onEditDayChange() {
 if (!this.editedExam || !this.editedExam.DAY) {
@@ -1324,19 +1704,6 @@ if (!this.editedExam || !this.editedExam.DAY) {
  
 
 
-onEditSlotChange() {
-if (!this.editedExam || !this.editedExam.DAY || !this.editedExam.SLOT) {
-    this.availableRooms = [];
-    return;
-  }
-
-  const slotKey = `${this.editedExam.DAY}_${this.editedExam.SLOT}`;
-  const usedRooms = this.usedRoomsPerSlot[slotKey] || new Set();
-  const allAvailableRooms = this.getAvailableRooms(this.rooms);
-
-  this.availableRooms = allAvailableRooms.filter(room => !usedRooms.has(room));
-  console.log(`✓ ${this.availableRooms.length} available rooms`);
-}
 
   cancelEdit() {
 
@@ -1352,13 +1719,92 @@ if (!this.editedExam || !this.editedExam.DAY || !this.editedExam.SLOT) {
   
 
 
+// saveEdit() {
+//   console.log('=== saveEdit called ===');
+//   console.log('Editing exam key:', this.editingExamKey);
+//   console.log('Edited data:', this.editedExam);
+
+//   // Safety checks
+//   if (!this.editingExamKey || !this.editedExam) {
+//     console.error('❌ No exam is being edited');
+//     this.showToast('Error', 'No exam selected for editing', 'destructive');
+//     return;
+//   }
+
+//   if (!this.editedExam.DAY || !this.editedExam.SLOT || !this.editedExam.ROOM) {
+//     this.showToast('Error', 'Please select Day, Time, and Room', 'destructive');
+//     return;
+//   }
+
+//   // Find the exam in the ORIGINAL array by key
+//   const realIndex = this.generatedSchedule.findIndex(
+//     e => this.getExamKey(e) === this.editingExamKey
+//   );
+
+//   if (realIndex === -1) {
+//     console.error('❌ Exam not found in generatedSchedule');
+//     this.showToast('Error', 'Exam not found', 'destructive');
+//     return;
+//   }
+
+//   console.log('📍 Found exam at real index:', realIndex);
+
+//   const original = this.generatedSchedule[realIndex];
+
+//   // Clear old room usage if schedule changed
+//   if (
+//     original.DAY !== this.editedExam.DAY ||
+//     original.SLOT !== this.editedExam.SLOT ||
+//     original.ROOM !== this.editedExam.ROOM
+//   ) {
+//     console.log('🔄 Schedule changed - updating room tracking');
+
+//     // Remove old room
+//     const oldSlots = this.getSlotsArray(original.SLOT);
+//     oldSlots.forEach(s => {
+//       const key = `${original.DAY}_${s}`;
+//       if (this.usedRoomsPerSlot[key]) {
+//         this.usedRoomsPerSlot[key].delete(original.ROOM);
+//       }
+//     });
+
+//     // Add new room
+//     const newSlots = this.getSlotsArray(this.editedExam.SLOT);
+//     newSlots.forEach(s => {
+//       const key = `${this.editedExam.DAY}_${s}`;
+//       if (!this.usedRoomsPerSlot[key]) {
+//         this.usedRoomsPerSlot[key] = new Set();
+//       }
+//       this.usedRoomsPerSlot[key].add(this.editedExam.ROOM);
+//     });
+//   }
+
+//   // Update the exam in the original array
+//   this.generatedSchedule[realIndex] = { ...this.editedExam };
+//   console.log('✅ Exam updated:', this.generatedSchedule[realIndex]);
+
+//   // Clear edit state
+//   this.editingExamKey = null;
+//   this.editedExam = null;
+//   this.availableSlots = [];
+//   this.availableRooms = [];
+
+//   // Rebuild everything
+//   this.generateCourseGridData();
+//   this.detectProctorConflicts();
+//   this.autoSaveToLocalStorage();
+
+//   this.showToast('Success', 'Exam updated');
+//   console.log('✓ Save completed');
+// }
+
 saveEdit() {
   console.log('=== saveEdit called ===');
-  console.log('Editing exam key:', this.editingExamKey);
+  console.log('Editing row:', this.editingRow);
   console.log('Edited data:', this.editedExam);
 
   // Safety checks
-  if (!this.editingExamKey || !this.editedExam) {
+  if (this.editingRow === null || !this.editedExam) {
     console.error('❌ No exam is being edited');
     this.showToast('Error', 'No exam selected for editing', 'destructive');
     return;
@@ -1369,55 +1815,121 @@ saveEdit() {
     return;
   }
 
-  // Find the exam in the ORIGINAL array by key
-  const realIndex = this.generatedSchedule.findIndex(
-    e => this.getExamKey(e) === this.editingExamKey
-  );
-
-  if (realIndex === -1) {
-    console.error('❌ Exam not found in generatedSchedule');
+  // Get the original exam from displayedSchedule using the display index
+  const displayedExam = this.displayedSchedule[this.editingRow];
+  
+  if (!displayedExam) {
+    console.error('❌ Exam not found in displayedSchedule');
     this.showToast('Error', 'Exam not found', 'destructive');
     return;
   }
 
-  console.log('📍 Found exam at real index:', realIndex);
+  // Find the actual exam(s) in generatedSchedule
+  const original = this.generatedSchedule.find(e => 
+    e.CODE === displayedExam.CODE &&
+    e.SUBJECT_ID === displayedExam.SUBJECT_ID &&
+    e.DAY === displayedExam.DAY &&
+    e.SLOT === displayedExam.SLOT
+  );
 
-  const original = this.generatedSchedule[realIndex];
+  if (!original) {
+    console.error('❌ Original exam not found');
+    this.showToast('Error', 'Exam not found', 'destructive');
+    return;
+  }
 
-  // Clear old room usage if schedule changed
-  if (
-    original.DAY !== this.editedExam.DAY ||
-    original.SLOT !== this.editedExam.SLOT ||
-    original.ROOM !== this.editedExam.ROOM
-  ) {
-    console.log('🔄 Schedule changed - updating room tracking');
+  // Check if this is a multi-slot exam
+  const isMultiSlot = original.IS_MULTI_SLOT;
+  const totalSlots = original.TOTAL_SLOTS || 1;
 
-    // Remove old room
-    const oldSlots = this.getSlotsArray(original.SLOT);
-    oldSlots.forEach(s => {
-      const key = `${original.DAY}_${s}`;
+  console.log(`📝 Editing ${isMultiSlot ? 'multi-slot' : 'single-slot'} exam (${totalSlots} slots)`);
+
+  // Clear old room usage for ALL slots of this exam
+  if (isMultiSlot) {
+    const allOldSlots = this.generatedSchedule.filter(e =>
+      e.CODE === original.CODE &&
+      e.SUBJECT_ID === original.SUBJECT_ID &&
+      e.DAY === original.DAY &&
+      e.ROOM === original.ROOM
+    );
+
+    allOldSlots.forEach(e => {
+      const key = `${e.DAY}_${e.SLOT}`;
       if (this.usedRoomsPerSlot[key]) {
-        this.usedRoomsPerSlot[key].delete(original.ROOM);
+        this.usedRoomsPerSlot[key].delete(e.ROOM);
       }
     });
 
-    // Add new room
-    const newSlots = this.getSlotsArray(this.editedExam.SLOT);
-    newSlots.forEach(s => {
-      const key = `${this.editedExam.DAY}_${s}`;
+    // Remove ALL old slot entries
+    this.generatedSchedule = this.generatedSchedule.filter(e =>
+      !(e.CODE === original.CODE &&
+        e.SUBJECT_ID === original.SUBJECT_ID &&
+        e.DAY === original.DAY &&
+        e.ROOM === original.ROOM)
+    );
+  } else {
+    // Single slot: clear old room
+    const key = `${original.DAY}_${original.SLOT}`;
+    if (this.usedRoomsPerSlot[key]) {
+      this.usedRoomsPerSlot[key].delete(original.ROOM);
+    }
+  }
+
+  // Add new entries
+  if (isMultiSlot) {
+    // Multi-slot: Add entries for all slots
+    const newSlotIndex = this.timeSlots.indexOf(this.editedExam.SLOT);
+    
+    if (newSlotIndex === -1) {
+      this.showToast('Error', 'Invalid time slot', 'destructive');
+      return;
+    }
+
+    if (newSlotIndex + totalSlots > this.timeSlots.length) {
+      this.showToast('Error', 'Not enough consecutive slots available', 'destructive');
+      return;
+    }
+
+    for (let i = 0; i < totalSlots; i++) {
+      const slot = this.timeSlots[newSlotIndex + i];
+      const key = `${this.editedExam.DAY}_${slot}`;
+      
       if (!this.usedRoomsPerSlot[key]) {
         this.usedRoomsPerSlot[key] = new Set();
       }
       this.usedRoomsPerSlot[key].add(this.editedExam.ROOM);
-    });
+
+      this.generatedSchedule.push({
+        ...this.editedExam,
+        SLOT: slot,
+        SLOT_INDEX: i,
+        TOTAL_SLOTS: totalSlots,
+        IS_MULTI_SLOT: true
+      });
+    }
+
+    console.log(`✅ Updated ${totalSlots} slot entries`);
+  } else {
+    // Single slot: Update entry
+    const key = `${this.editedExam.DAY}_${this.editedExam.SLOT}`;
+    if (!this.usedRoomsPerSlot[key]) {
+      this.usedRoomsPerSlot[key] = new Set();
+    }
+    this.usedRoomsPerSlot[key].add(this.editedExam.ROOM);
+
+    if (!isMultiSlot) {
+      // Replace at original index
+      this.generatedSchedule[this.editingRow] = { ...this.editedExam };
+    } else {
+      // Add as new single entry
+      this.generatedSchedule.push({ ...this.editedExam });
+    }
+
+    console.log('✅ Updated single slot entry');
   }
 
-  // Update the exam in the original array
-  this.generatedSchedule[realIndex] = { ...this.editedExam };
-  console.log('✅ Exam updated:', this.generatedSchedule[realIndex]);
-
   // Clear edit state
-  this.editingExamKey = null;
+  this.editingRow = null;
   this.editedExam = null;
   this.availableSlots = [];
   this.availableRooms = [];
@@ -1430,6 +1942,39 @@ saveEdit() {
   this.showToast('Success', 'Exam updated');
   console.log('✓ Save completed');
 }
+
+
+getMergedTimeDisplay(exam: ScheduledExam): string {
+  if (!exam.IS_MULTI_SLOT) {
+    return exam.SLOT;
+  }
+
+  // Find all slots for this exam
+  const allSlots = this.generatedSchedule
+    .filter(e => 
+      e.CODE === exam.CODE &&
+      e.SUBJECT_ID === exam.SUBJECT_ID &&
+      e.DAY === exam.DAY &&
+      e.ROOM === exam.ROOM &&
+      e.IS_MULTI_SLOT
+    )
+    .sort((a, b) => (a.SLOT_INDEX || 0) - (b.SLOT_INDEX || 0))
+    .map(e => e.SLOT);
+
+  if (allSlots.length <= 1) {
+    return exam.SLOT;
+  }
+
+  // Merge the time range
+  const firstSlot = allSlots[0];
+  const lastSlot = allSlots[allSlots.length - 1];
+
+  const startTime = firstSlot.split('-')[0].trim();
+  const endTime = lastSlot.split('-')[1].trim();
+
+  return `${startTime} - ${endTime}`;
+}
+
 
 
   updateEditField(field: keyof ScheduledExam, value: any) {
@@ -2726,427 +3271,7 @@ generateCourseGridData() {
 }
 
 
-// generateExamSchedule() {
-//   if (this.exams.length === 0) {
-//     this.showToast('Error', 'Please import exams first', 'destructive');
-//     return;
-//   }
 
-  
-
-//   const allRooms = this.rooms.length > 0 ? this.rooms.sort() : ['A', 'C', 'K', 'L', 'M', 'N'];
-//   const roomsList = this.getAvailableRooms(allRooms);
-  
-//   console.log(` Available rooms (${roomsList.length}):`, roomsList);
-//   console.log(` Restricted rooms (${this.restrictedRooms.length}):`, this.restrictedRooms);
-  
-//   const schedule: ScheduledExam[] = [];
-
-//   // Reset room tracking
-//   this.usedRoomsPerSlot = {};
-
-//   // Group exams by course
-//   const courseGroups: { [course: string]: Exam[] } = {};
-//   this.exams.forEach(exam => {
-//     const course = exam.course ? exam.course.toUpperCase().trim() : '';
-//     if (!courseGroups[course]) courseGroups[course] = [];
-//     courseGroups[course].push(exam);
-//   });
-
-
-//   // Track already scheduled exams by subject+title (WITH ROOM)
-// const subjectTitleSlot: { 
-//   [key: string]: { 
-//     day: string; 
-//     slots: string[]; 
-//     room: string; 
-//     codes: Set<string> 
-//   } 
-// } = {};
-//   // Track merged exams by subject+title+code
-//   const subjectTitleCodeSlot: { [key: string]: boolean } = {};
-
-//   // Track exams per day for balancing
-//   const examsPerDay: { [day: string]: number } = {};
-//   this.days.forEach(day => examsPerDay[day] = 0);
-
-//   // ⭐ NEW: Track which slots each course has used on each day (to prevent consecutive)
-//   const courseSlotsByDay: { [course: string]: { [day: string]: Set<string> } } = {};
-
-//   // Global slot rotation for even distribution
-//   let globalSlotIndex = 0;
-
-//   // Get last day for afternoon restriction
-//   const lastDay = this.days[this.days.length - 1];
-
-//   for (const course of Object.keys(courseGroups)) {
-//     const courseExams = courseGroups[course];
-    
-//     console.log(`\n📚 Processing course: ${course} (${courseExams.length} exams)`);
-
-//     // ⭐ Initialize tracking for this course
-//     if (!courseSlotsByDay[course]) {
-//       courseSlotsByDay[course] = {};
-//       this.days.forEach(day => {
-//         courseSlotsByDay[course][day] = new Set<string>();
-//       });
-//     }
-
-//     for (const exam of courseExams) {
-//       const subjectId = exam.subjectId ? exam.subjectId.toUpperCase().trim() : '';
-//       const title = exam.title ? exam.title.toUpperCase().trim() : '';
-//       const code = exam.code ? exam.code.toUpperCase().trim() : '';
-      
-//       const subjectTitleCodeKey = `${subjectId}_${title}_${code}`;
-//       const subjectTitleKey = `${subjectId}_${title}`;
-
-//       // Skip if exact duplicate already scheduled
-//       if (subjectTitleCodeSlot[subjectTitleCodeKey]) {
-//         console.log(`⏭️ Skipping duplicate: ${code}`);
-//         continue;
-//       }
-
-//       const totalUnits = (exam.lec || 0) + (exam.lab || 0);
-//       const slotsNeeded = totalUnits >= 6 ? 2 : 1;
-
-//       let day = '';
-//       let slots: string[] = [];
-//       let assignedRoom = '';
-
-//       // Check if this subject+title combination already has a schedule
-//       if (subjectTitleSlot[subjectTitleKey]) {
-//         // SAME SUBJECT+TITLE EXISTS - use same day/timeslot, different room
-//         const existing = subjectTitleSlot[subjectTitleKey];
-//         day = existing.day;
-//         slots = [...existing.slots];
-//           assignedRoom = ''; // ⭐ USE SAME ROOM
-
-//         console.log(`📌 Grouping ${code} with existing ${Array.from(existing.codes).join(', ')} on ${day} ${slots.join(',')}`);
-        
-//         existing.codes.add(code);
-        
-//       } else {
-//         // NEW SUBJECT+TITLE - assign with enhanced constraints
-        
-//         // Find day with minimum exams (balanced distribution)
-//         let sortedDays = [...this.days].sort((a, b) => 
-//           examsPerDay[a] - examsPerDay[b]
-//         );
-        
-//         // ⭐ TRY TO FIND A DAY+SLOT THAT AVOIDS CONSECUTIVE EXAMS
-//         let foundSafeSlot = false;
-//         let bestDay = '';
-//         let bestSlots: string[] = [];
-        
-//         for (const candidateDay of sortedDays) {
-//           // Get available time slots based on constraints
-//           let availableSlots = [...this.timeSlots];
-          
-//           // Handle CFED restriction (no 7:30 AM)
-//           if ((subjectId || '').includes('CFED')) {
-//             availableSlots = availableSlots.filter(t => !t.startsWith('7:30'));
-//           }
-          
-//           // ⭐ CRITICAL: Enforce morning-only on last day
-//           if (candidateDay === lastDay) {
-//             availableSlots = this.getMorningSlots(availableSlots);
-            
-//             if (availableSlots.length === 0) {
-//               console.warn(`⚠️ No morning slots on last day for ${code}, trying other days`);
-//               continue; // Skip this day entirely
-//             }
-//           }
-          
-         
-//           // Also ensure we don't pick slots that would CREATE consecutive exams
-//           const usedSlots = courseSlotsByDay[course][candidateDay];
-//           const safeSlots: string[] = [];
-          
-//           for (const slot of availableSlots) {
-//             const slotIdx = this.timeSlots.indexOf(slot);
-//             let isSafe = true;
-            
-//             // Check if this slot or any slot we'd need is consecutive to used slots
-//             for (let offset = 0; offset < slotsNeeded; offset++) {
-//               const checkSlot = this.timeSlots[slotIdx + offset];
-//               if (!checkSlot) {
-//                 isSafe = false; // Not enough consecutive slots available
-//                 break;
-//               }
-              
-//               // Check if this slot is consecutive to any used slot
-//               if (this.isSlotConsecutiveToAny(checkSlot, usedSlots)) {
-//                 isSafe = false;
-//                 break;
-//               }
-//             }
-            
-//             // Also check the slot BEFORE this range
-//             if (isSafe && slotIdx > 0) {
-//               const slotBefore = this.timeSlots[slotIdx - 1];
-//               if (usedSlots.has(slotBefore)) {
-//                 isSafe = false; // Would create consecutive with previous slot
-//               }
-//             }
-            
-//             // Also check the slot AFTER this range
-//             if (isSafe && slotIdx + slotsNeeded < this.timeSlots.length) {
-//               const slotAfter = this.timeSlots[slotIdx + slotsNeeded];
-//               if (usedSlots.has(slotAfter)) {
-//                 isSafe = false; // Would create consecutive with next slot
-//               }
-//             }
-            
-//             if (isSafe) {
-//               safeSlots.push(slot);
-//             }
-//           }
-          
-//           if (safeSlots.length > 0) {
-//             // Found safe slots on this day!
-//             bestDay = candidateDay;
-            
-//             // Pick the first safe slot (or rotate through them)
-//             const chosenSlot = safeSlots[globalSlotIndex % safeSlots.length];
-//             const chosenIdx = this.timeSlots.indexOf(chosenSlot);
-            
-//             bestSlots = [];
-//             for (let i = 0; i < slotsNeeded; i++) {
-//               bestSlots.push(this.timeSlots[chosenIdx + i]);
-//             }
-            
-//             foundSafeSlot = true;
-//             console.log(`✅ Found safe non-consecutive slot for ${code}: ${bestDay} ${bestSlots.join(',')}`);
-//             break; // Stop searching
-//           }
-//         }
-        
-//         // If no safe slot found, try again but allow consecutive slots
-//         // (This is a fallback when the schedule is very tight)
-//         if (!foundSafeSlot) {
-//           console.warn(`⚠️ Could not find non-consecutive slot for ${code}, trying with room availability only`);
-          
-//           for (const candidateDay of sortedDays) {
-//             let availableSlots = [...this.timeSlots];
-            
-//             if ((subjectId || '').includes('CFED')) {
-//               availableSlots = availableSlots.filter(t => !t.startsWith('7:30'));
-//             }
-            
-//             if (candidateDay === lastDay) {
-//               availableSlots = this.getMorningSlots(availableSlots);
-//               if (availableSlots.length === 0) continue;
-//             }
-            
-//             // Find slots with available rooms (ignore consecutive for now)
-//             for (const slot of availableSlots) {
-//               const slotIdx = this.timeSlots.indexOf(slot);
-//               const checkSlots: string[] = [];
-              
-//               let hasRooms = true;
-//               for (let i = 0; i < slotsNeeded; i++) {
-//                 const checkSlot = this.timeSlots[slotIdx + i];
-//                 if (!checkSlot) {
-//                   hasRooms = false;
-//                   break;
-//                 }
-//                 checkSlots.push(checkSlot);
-                
-//                 const slotKey = `${candidateDay}_${checkSlot}`;
-//                 if (!this.usedRoomsPerSlot[slotKey]) {
-//                   this.usedRoomsPerSlot[slotKey] = new Set();
-//                 }
-//                 if (this.usedRoomsPerSlot[slotKey].size >= roomsList.length) {
-//                   hasRooms = false;
-//                   break;
-//                 }
-//               }
-              
-//               if (hasRooms) {
-//                 bestDay = candidateDay;
-//                 bestSlots = checkSlots;
-//                 foundSafeSlot = true;
-//                 console.warn(`⚠️ Using fallback consecutive slot for ${code}: ${bestDay} ${bestSlots.join(',')}`);
-//                 break;
-//               }
-//             }
-            
-//             if (foundSafeSlot) break;
-//           }
-//         }
-        
-//         if (!foundSafeSlot) {
-//           console.error(`❌ CRITICAL: Cannot schedule ${code} - no valid slots on any day!`);
-//           continue; // Skip this exam
-//         }
-        
-//         day = bestDay;
-//         slots = bestSlots;
-        
-//         // Increment counter for this day
-//         examsPerDay[day]++;
-        
-//         // ⭐ Mark these slots as used by this course on this day
-//         slots.forEach(slot => {
-//           courseSlotsByDay[course][day].add(slot);
-//         });
-        
-//         // Move to next slot position for next exam
-//         globalSlotIndex = (globalSlotIndex + slotsNeeded) % this.timeSlots.length;
-
-        
-        
-//         console.log(`🆕 New group for ${code}: ${day} ${slots.join(',')} | Non-consecutive: ${foundSafeSlot}`);
-//       }
-
-//  // Mark this specific code as scheduled
-//       subjectTitleCodeSlot[subjectTitleCodeKey] = true;
-
-//       // CRITICAL: Multi-slot exams (6+ units) must use THE SAME ROOM across all slots
-//       // CRITICAL: Multi-slot exams (6+ units) must use THE SAME ROOM across all slots
-// if (slotsNeeded > 1) {
-
-//    if (!assignedRoom) {
-//   // Assign a room once for the exam
-//   assignedRoom = this.getFirstAvailableRoom(day, slots, roomsList);
-//   if (!assignedRoom) {
-//     console.error(`❌ No room available for multi-slot exam ${exam.code} on ${day}`);
-//     assignedRoom = 'TBD';
-//   }
-//    }
-//   // Create one entry per slot with same room
-//   slots.forEach((slot, index) => {
-//     schedule.push({
-//       CODE: exam.code,
-//       SUBJECT_ID: exam.subjectId,
-//       DESCRIPTIVE_TITLE: exam.title,
-//       COURSE: exam.course,
-//       YEAR_LEVEL: exam.yearLevel,
-//       INSTRUCTOR: exam.instructor,
-//       DEPT: exam.dept,
-//       DEPT_SUB: exam.deptCode,
-//       OE: exam.oe,
-//       DAY: day,
-//       SLOT: slot,          // Individual slot
-//       ROOM: assignedRoom,  // Same room for all slots
-//       PROCTOR: exam.instructor || 'TBD',
-//       HAS_CONFLICT: false,
-//       IS_MULTI_SLOT: true,
-//       SLOT_INDEX: index,
-//       TOTAL_SLOTS: slotsNeeded
-//     });
-//   });
-// } else {
-//   // Single slot exam
-//   assignedRoom = this.getFirstAvailableRoom(day, slots, roomsList) || 'TBD';
-//   schedule.push({
-//     CODE: exam.code,
-//     SUBJECT_ID: exam.subjectId,
-//     DESCRIPTIVE_TITLE: exam.title,
-//     COURSE: exam.course,
-//     YEAR_LEVEL: exam.yearLevel,
-//     INSTRUCTOR: exam.instructor,
-//     DEPT: exam.dept,
-//     DEPT_SUB: exam.deptCode,
-//     OE: exam.oe,
-//     DAY: day,
-//     SLOT: slots[0],
-//     ROOM: assignedRoom,
-//     PROCTOR: exam.instructor || 'TBD',
-//     HAS_CONFLICT: false,
-//     IS_MULTI_SLOT: false,
-//     SLOT_INDEX: 0,
-//     TOTAL_SLOTS: 1
-//   });
-// }
-// if (!subjectTitleSlot[subjectTitleKey]) {
-//         subjectTitleSlot[subjectTitleKey] = { 
-//           day, 
-//           slots, 
-//           room: assignedRoom,
-//           codes: new Set([code]) 
-//         };
-//       }
-
-
-//       if (!assignedRoom) {
-//         console.error(`❌ No room available for ${code} on ${day} ${slots.join(',')}`);
-//         assignedRoom = 'TBD';
-//       }
-
-// // // Compute merged slot ONCE
-// // let mergedSlot = '';
-// // if (slots.length === 1) {
-// //   mergedSlot = slots[0];
-// // } else {
-// //   const firstSlot = slots[0];
-// //   const lastSlot = slots[slots.length - 1];
-
-// //   if (firstSlot.includes('-') && lastSlot.includes('-')) {
-// //     const startTime = firstSlot.split('-')[0].trim();
-// //     const endTime = lastSlot.split('-')[1].trim();
-// //     mergedSlot = `${startTime} - ${endTime}`;
-// //   } else {
-// //     mergedSlot = slots.join(' - ');
-// //   }
-// // }
-
-// // // Optional: save in exam object
-// // exam['MERGED_SLOT'] = mergedSlot;
-
-
-//       // schedule.push({
-//       //   CODE: exam.code,
-//       //   SUBJECT_ID: exam.subjectId,
-//       //   DESCRIPTIVE_TITLE: exam.title,
-//       //   COURSE: exam.course,
-//       //   YEAR_LEVEL: exam.yearLevel,
-//       //   INSTRUCTOR: exam.instructor,
-//       //   DEPT: exam.dept,
-//       //   DEPT_SUB: exam.deptCode,
-//       //   OE: exam.oe,
-//       //   DAY: day,
-//       //   SLOT: mergedSlot,
-//       //   ROOM: assignedRoom,
-//       //   PROCTOR: exam.instructor || 'TBD',
-//       //   HAS_CONFLICT: false,
-//       //   durationHours: exam.lec + exam.oe
-//       // });
-//     }
-//   }
-
-//   this.generatedSchedule = schedule;
-  
-//   // ⭐ VALIDATION: Check for violations
-//   this.validateScheduleConstraints(schedule);
-  
-//   console.log('\n📊 FINAL DISTRIBUTION:');
-//   this.days.forEach(day => {
-//     const count = schedule.filter(s => s.DAY === day).length;
-//     const morningCount = schedule.filter(s => s.DAY === day && this.isMorningSlot(s.SLOT)).length;
-//     const afternoonCount = count - morningCount;
-//     console.log(`  ${day}: ${count} exams (${morningCount} morning, ${afternoonCount} afternoon)`);
-//   });
-  
-//   // Detect unscheduled exams
-//   this.detectUnscheduledExams();
-
-//   this.unscheduledExams = this.exams.filter(e => {
-//     return !this.generatedSchedule.some(s =>
-//       (s.CODE || '').toUpperCase() === (e.code || '').toUpperCase()
-//     );
-//   });
-
-//   console.log('\n📋 UNSCHEDULED EXAMS:', this.unscheduledExams.length);
-//   if (this.unscheduledExams.length > 0) {
-//     console.log(this.unscheduledExams.map(e => e.code).join(', '));
-//   }
-
-//   this.detectProctorConflicts();
-//   this.currentStep = 'generate';
-//   this.showToast('Schedule Generated', `${schedule.length} exams scheduled successfully and ${this.UnenrolledExam.length} removed Unenrolled Exams`);
-//   this.autoSaveToLocalStorage();
-// }
 
 generateExamSchedule() {
   if (this.exams.length === 0) {
@@ -3461,13 +3586,38 @@ if (isAlliedCourse) {
       // Assign rooms
       if (slotsNeeded > 1) {
         if (!assignedRoom) {
-          assignedRoom = this.getFirstAvailableRoom(day, slots, roomsList);
-          if (!assignedRoom) {
-            console.error(`❌ No room available for multi-slot exam ${exam.code} on ${day}`);
+          // Collect used rooms for all slots
+          const usedRoomsForSlots = new Set<string>();
+          slots.forEach(slot => {
+            const slotKey = `${day}_${slot}`;
+            if (this.usedRoomsPerSlot[slotKey]) {
+              this.usedRoomsPerSlot[slotKey].forEach(room => usedRoomsForSlots.add(room));
+            }
+          });
+          
+          console.log(`🔍 Multi-slot exam ${exam.code} (${exam.deptCode}): Total rooms: ${roomsList.length}, Used in slots: ${usedRoomsForSlots.size}`);
+          console.log(`   Available rooms: ${roomsList.filter(r => !usedRoomsForSlots.has(r)).join(', ')}`);
+          
+          // Try department-based assignment
+          assignedRoom = this.assignRoomByDepartment(exam, usedRoomsForSlots, roomsList);
+          
+          if (assignedRoom && assignedRoom !== 'TBD') {
+            // Mark room as used for all slots
+            slots.forEach(slot => {
+              const slotKey = `${day}_${slot}`;
+              if (!this.usedRoomsPerSlot[slotKey]) {
+                this.usedRoomsPerSlot[slotKey] = new Set();
+              }
+              this.usedRoomsPerSlot[slotKey].add(assignedRoom);
+            });
+            console.log(`✅ Department-based room assigned: ${assignedRoom} for ${exam.code}`);
+          } else {
+            console.error(`❌ No department room available for multi-slot exam ${exam.code} on ${day} - will show as 'Please assign room'`);
             assignedRoom = 'TBD';
           }
         }
-        
+        if (assignedRoom === 'TBD') assignedRoom = 'Please assign room';
+
         slots.forEach((slot, index) => {
           schedule.push({
             CODE: exam.code,
@@ -3491,8 +3641,28 @@ if (isAlliedCourse) {
         });
       } else {
         if (!assignedRoom) {
-          assignedRoom = this.getFirstAvailableRoom(day, slots, roomsList) || 'TBD';
+          const slotKey = `${day}_${slots[0]}`;
+          const usedRoomsForSlot = this.usedRoomsPerSlot[slotKey] || new Set<string>();
+          
+          console.log(`🔍 Single-slot exam ${exam.code} (${exam.deptCode}): Total rooms: ${roomsList.length}, Used in slot: ${usedRoomsForSlot.size}`);
+          console.log(`   Available rooms: ${roomsList.filter(r => !usedRoomsForSlot.has(r)).join(', ')}`);
+          
+          // Try department-based assignment
+          assignedRoom = this.assignRoomByDepartment(exam, usedRoomsForSlot, roomsList);
+          
+          if (assignedRoom && assignedRoom !== 'TBD') {
+            // Mark room as used
+            if (!this.usedRoomsPerSlot[slotKey]) {
+              this.usedRoomsPerSlot[slotKey] = new Set();
+            }
+            this.usedRoomsPerSlot[slotKey].add(assignedRoom);
+            console.log(`✅ Department-based room assigned: ${assignedRoom} for ${exam.code}`);
+          } else {
+            console.warn(`⚠️ No department room available for ${exam.code} - will show as 'Please assign room'`);
+            assignedRoom = 'TBD';
+          }
         }
+        if (assignedRoom === 'TBD') assignedRoom = 'Please assign room';
         
         schedule.push({
           CODE: exam.code,
@@ -3525,10 +3695,14 @@ if (isAlliedCourse) {
       }
     }
   }
-
+  
   this.generatedSchedule = schedule;
   this.validateScheduleConstraints(schedule);
   
+
+    this.detectScheduleConflicts();
+
+
   console.log('\n📊 FINAL DISTRIBUTION:');
   this.days.forEach(day => {
     const count = schedule.filter(s => s.DAY === day).length;
@@ -5114,7 +5288,8 @@ private executeProctorAssignment(exam: ScheduledExam, proctor: string) {
   
   // Only update suggestions for affected time slot (much faster)
   this.updateSuggestionsForTimeSlot(exam.DAY, exam.SLOT);
-  
+    this.detectProctorConflicts();
+
   const proctorSubjects = this.getInstructorSubjects(proctor);
   const examSubject = exam.SUBJECT_ID || '';
   
@@ -5300,7 +5475,7 @@ async autoAssignAllProctors() {
 
   await this.precomputeAllProctorSuggestions();
   this.computeFilteredProctorList();
-
+this.detectProctorConflicts();
   Swal.close();
 
   const message = `
@@ -5398,6 +5573,7 @@ async viewProctorAssignments() {
   console.log(`  - ${this.generatedSchedule.length} total exams`);
   console.log(`  - ${this._filteredProctorList.length} displayed`);
   
+    this.detectProctorConflicts();
   this.cd.detectChanges();
 }
 
@@ -5519,6 +5695,7 @@ getMergedSlotForDisplay(exam: ScheduledExam): string {
   
   return `${startTime}-${endTime}`;
 }
+
 
 
 }
