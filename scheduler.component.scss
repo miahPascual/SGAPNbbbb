@@ -27,7 +27,7 @@
   align-items: center;
   gap: 12px;
   padding: 16px 20px;
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  background: #294A70;
   color: white;
   font-weight: 600;
   font-size: 1.125rem;
@@ -4429,13 +4429,14 @@ mat-hint.success-hint {
   justify-content: space-between;
   padding: 20px 24px;
   border-bottom: 2px solid #e5e7eb;
+  background-color: 166534;
   
   h2 {
     display: flex;
     align-items: center;
     gap: 12px;
     margin: 0;
-    color: #ef4444;
+    color: white;
     
     mat-icon {
       font-size: 28px;
@@ -4574,6 +4575,7 @@ mat-hint.success-hint {
     height: 64px;
     color: #22c55e;
     margin-bottom: 16px;
+    background-color: 166534;
   }
   
   h3 {
