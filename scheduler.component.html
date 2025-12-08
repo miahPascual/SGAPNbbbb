@@ -164,12 +164,113 @@
   <!-- STEP 2: GENERATED SCHEDULE -->
   <div *ngIf="currentStep === 'generate'" class="card">
     
+
     <div class="card-header">
+  <h2>Generated Schedule</h2>
+  <div class="button-group">
+    <button class="btn btn-outline" (click)="downloadScheduleCSV()">
+      💾 Download CSV
+    </button>
+    
+    <!-- ✅ NEW: Auto-Assign Rooms Button -->
+    <button 
+      class="btn btn-primary"
+      (click)="autoAssignTBDRooms()"
+      *ngIf="getTotalConflicts() > 0"
+      title="Automatically assign available rooms to exams with 'TBD' or 'Please assign room'">
+      <mat-icon>meeting_room</mat-icon>
+      Auto-Assign Rooms
+    </button>
+    
+    <!-- ✅ NEW: Show TBD Report Button -->
+    <button 
+      class="btn btn-info"
+      (click)="showTBDRoomsReport()"
+      *ngIf="getTotalConflicts() > 0"
+      title="View detailed report of unassigned rooms">
+      <mat-icon>info</mat-icon>
+      Room Report
+    </button>
+    
+    <button 
+      class="btn"
+      [class.btn-warning]="getTotalConflicts() > 0"
+      [class.btn-success]="getTotalConflicts() === 0"
+      (click)="showConflictPanel = true">
+      <mat-icon>{{ getTotalConflicts() > 0 ? 'warning' : 'check_circle' }}</mat-icon>
+      {{ getTotalConflicts() > 0 ? 'View Room Issues' : 'All Rooms OK' }}
+      <span class="badge" *ngIf="getTotalConflicts() > 0">{{ getTotalConflicts() }}</span>
+    </button>
+  </div>
+
+  <style>
+.btn-primary {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.btn-primary:hover {
+  background: #2563eb;
+}
+
+.btn-info {
+  background: #06b6d4;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.btn-info:hover {
+  background: #0891b2;
+}
+</style>
+
+</div>
+
+
+    <!-- <div class="card-header">
         <h2>Generated Schedule</h2>
         <div class="button-group">
+
             <button class="btn btn-outline" (click)="downloadScheduleCSV()">
               💾 Download CSV
             </button>
+
+            <button 
+      class="btn btn-primary"
+      (click)="autoAssignTBDRooms()"
+      *ngIf="getTotalConflicts() > 0"
+      title="Automatically assign available rooms to exams with 'TBD' or 'Please assign room'">
+      <mat-icon>meeting_room</mat-icon>
+      Auto-Assign Rooms
+    </button> -->
+    
+    <!-- ✅ NEW: Show TBD Report Button -->
+    <!-- <button 
+      class="btn btn-info"
+      (click)="showTBDRoomsReport()"
+      *ngIf="getTotalConflicts() > 0"
+      title="View detailed report of unassigned rooms">
+      <mat-icon>info</mat-icon>
+      Room Report
+    </button>
+
             <button 
               class="btn"
               [class.btn-warning]="getTotalConflicts() > 0"
@@ -179,8 +280,9 @@
               Exams with No Rooms
               <span class="badge" *ngIf="getTotalConflicts() > 0">{{ getTotalConflicts() }}</span>
             </button>
+
         </div>
-    </div>
+    </div> -->
 
     <p class="subtitle">{{ generatedSchedule.length }} exams scheduled</p>
 

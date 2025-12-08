@@ -3180,12 +3180,13 @@ initiateMoveOperation(exam: ScheduledExam) {
 private restrictedRooms: string[] = [
   'B-11', 'B-12', 'BTL', 'BUL', 'HL',
   'J-42', 'J-43', 'J-44', 'J-45', 'J-46', 'J-48',
-  'K-13', 'K-14', 'K-22', 'K-24', 'K-41',
-  'L-23', 'M-21', 'M-31', 'M-33', 'M-43',
+  // 'K-13', 'K-14', 'K-22', 'K-24', 'K-41',
+  // 'L-23', 'M-21', 'M-31', 'M-33', 'M-43',
   'MChem', 'MLab1', 'MLab2', 'NutriS', 'MTL',
-  'A-102', 'A-203', 'A-204', 'A-205', 'A-219', 'A-221',
-  'A-225', 'A-226', 'A-234', 'A-302', 'A-306', 'A-308',
-  'A-309', 'A-310', 'A-311', 'A-312', 'EMC', 'Hosp', 'Molec', 'Nutri', 
+  // 'A-102', 'A-203', 'A-204', 'A-205', 'A-219', 'A-221',
+  // 'A-225', 'A-226', 'A-234', 'A-302', 'A-306', 'A-308',
+  // 'A-309', 'A-310', 'A-311', 'A-312', 
+  'EMC', 'Hosp', 'Molec', 'Nutri', 
   'Pharm', 'SMTL', 'TBA', 'Virtu', 'to be', 'BTL', 'BUL', 'DemoR', 'TBD'
 
 ];
@@ -5702,6 +5703,292 @@ getMergedSlotForDisplay(exam: ScheduledExam): string {
   return `${startTime}-${endTime}`;
 }
 
+// ============================================
+// AUTO-ASSIGN TBD ROOMS TO AVAILABLE DEPARTMENT ROOMS
+// ============================================
+
+// 1. Main function to auto-assign all TBD rooms
+autoAssignTBDRooms() {
+  console.log('=== Auto-Assigning TBD Rooms ===');
+  
+  if (!this.generatedSchedule || this.generatedSchedule.length === 0) {
+    this.showToast('Error', 'No schedule generated', 'destructive');
+    return;
+  }
+
+  // Get all available rooms (filtered)
+  const allRooms = this.rooms.length > 0 ? this.rooms.sort() : ['A', 'C', 'K', 'L', 'M', 'N'];
+  const availableRoomsList = this.getAvailableRooms(allRooms);
+
+  // Find all exams with TBD or "Please assign room"
+  const tbdExams = this.generatedSchedule.filter(e => {
+    const room = e.ROOM.toUpperCase().trim();
+    return room === 'TBD' || room === 'Please assign room';
+  });
+
+  if (tbdExams.length === 0) {
+    this.showToast('Success', 'All rooms are already assigned!', 'success');
+    return;
+  }
+
+  console.log(`Found ${tbdExams.length} exams needing room assignment`);
+
+  let assignedCount = 0;
+  let failedCount = 0;
+  const failedExams: string[] = [];
+
+  // Process each TBD exam
+  tbdExams.forEach(exam => {
+    // Find if this is a multi-slot exam
+    const isMultiSlot = exam.IS_MULTI_SLOT;
+    
+    if (isMultiSlot) {
+      // For multi-slot, find all slots for this exam
+      const allExamSlots = this.generatedSchedule.filter(e =>
+        e.CODE === exam.CODE &&
+        e.SUBJECT_ID === exam.SUBJECT_ID &&
+        e.DAY === exam.DAY &&
+        e.IS_MULTI_SLOT
+      ).sort((a, b) => (a.SLOT_INDEX || 0) - (b.SLOT_INDEX || 0));
+
+      if (allExamSlots.length === 0) return;
+
+      // Get all slots needed
+      const slotsNeeded = allExamSlots.map(e => e.SLOT);
+
+      // Map to Exam interface for room assignment
+      const examForRoom: Exam = {
+        code: exam.CODE,
+        subjectId: exam.SUBJECT_ID,
+        title: exam.DESCRIPTIVE_TITLE,
+        course: exam.COURSE,
+        deptCode: exam.DEPT_SUB,
+        yearLevel: exam.YEAR_LEVEL,
+        instructor: exam.INSTRUCTOR,
+        dept: exam.DEPT,
+        lec: 0,
+        lab: 0,
+        oe: exam.OE || 0,
+        version: ''
+      };
+
+      // Find a room that's free in ALL slots
+      const usedRoomsAcrossAllSlots = new Set<string>();
+      slotsNeeded.forEach(slot => {
+        const key = `${exam.DAY}_${slot}`;
+        if (this.usedRoomsPerSlot[key]) {
+          this.usedRoomsPerSlot[key].forEach(room => usedRoomsAcrossAllSlots.add(room));
+        }
+      });
+
+      const newRoom = this.assignRoomByDepartment(examForRoom, usedRoomsAcrossAllSlots, availableRoomsList);
+
+      if (newRoom && newRoom !== 'TBD') {
+        // Assign room to ALL slots
+        allExamSlots.forEach(e => {
+          const index = this.generatedSchedule.findIndex(ge =>
+            ge.CODE === e.CODE &&
+            ge.SUBJECT_ID === e.SUBJECT_ID &&
+            ge.DAY === e.DAY &&
+            ge.SLOT === e.SLOT
+          );
+
+          if (index !== -1) {
+            this.generatedSchedule[index].ROOM = newRoom;
+            
+            // Mark room as used
+            const key = `${e.DAY}_${e.SLOT}`;
+            if (!this.usedRoomsPerSlot[key]) {
+              this.usedRoomsPerSlot[key] = new Set();
+            }
+            this.usedRoomsPerSlot[key].add(newRoom);
+          }
+        });
+
+        assignedCount++;
+        console.log(`✅ Assigned ${newRoom} to multi-slot exam ${exam.CODE} (${slotsNeeded.length} slots)`);
+      } else {
+        failedCount++;
+        failedExams.push(`${exam.CODE} (multi-slot)`);
+        console.warn(`❌ No room available for multi-slot exam ${exam.CODE}`);
+      }
+    } else {
+      // Single slot exam
+      const examForRoom: Exam = {
+        code: exam.CODE,
+        subjectId: exam.SUBJECT_ID,
+        title: exam.DESCRIPTIVE_TITLE,
+        course: exam.COURSE,
+        deptCode: exam.DEPT_SUB,
+        yearLevel: exam.YEAR_LEVEL,
+        instructor: exam.INSTRUCTOR,
+        dept: exam.DEPT,
+        lec: 0,
+        lab: 0,
+        oe: exam.OE || 0,
+        version: ''
+      };
+
+      // Get used rooms for this slot
+      const slotKey = `${exam.DAY}_${exam.SLOT}`;
+      const usedRoomsForSlot = this.usedRoomsPerSlot[slotKey] || new Set<string>();
+
+      // Try to assign a room
+      const newRoom = this.assignRoomByDepartment(examForRoom, usedRoomsForSlot, availableRoomsList);
+
+      if (newRoom && newRoom !== 'TBD') {
+        // Find and update the exam
+        const index = this.generatedSchedule.findIndex(e =>
+          e.CODE === exam.CODE &&
+          e.SUBJECT_ID === exam.SUBJECT_ID &&
+          e.DAY === exam.DAY &&
+          e.SLOT === exam.SLOT
+        );
+
+        if (index !== -1) {
+          this.generatedSchedule[index].ROOM = newRoom;
+
+          // Mark room as used
+          if (!this.usedRoomsPerSlot[slotKey]) {
+            this.usedRoomsPerSlot[slotKey] = new Set();
+          }
+          this.usedRoomsPerSlot[slotKey].add(newRoom);
+
+          assignedCount++;
+          console.log(`✅ Assigned ${newRoom} to ${exam.CODE} at ${exam.DAY} ${exam.SLOT}`);
+        }
+      } else {
+        failedCount++;
+        failedExams.push(exam.CODE);
+        console.warn(`❌ No room available for ${exam.CODE} at ${exam.DAY} ${exam.SLOT}`);
+      }
+    }
+  });
+
+  // Update everything
+  this.generateCourseGridData();
+  this.detectScheduleConflicts();
+  this.autoSaveToLocalStorage();
+  this.cd.detectChanges();
+
+  // Show summary
+  console.log(`\n📊 Auto-Assignment Summary:`);
+  console.log(`  ✅ Successfully assigned: ${assignedCount}`);
+  console.log(`  ❌ Failed to assign: ${failedCount}`);
+
+  if (failedCount > 0) {
+    console.log(`  Failed exams:`, failedExams.join(', '));
+  }
+
+  // Show toast notification
+  if (assignedCount > 0 && failedCount === 0) {
+    this.showToast(
+      'Success!',
+      `All ${assignedCount} rooms assigned successfully based on department preferences`,
+      'success'
+    );
+  } else if (assignedCount > 0 && failedCount > 0) {
+    Swal.fire({
+      title: 'Partial Success',
+      html: `
+        <div style="text-align: left; padding: 15px;">
+          <p><strong>✅ Successfully assigned: ${assignedCount} rooms</strong></p>
+          <p><strong>❌ Failed to assign: ${failedCount} exams</strong></p>
+          <p style="margin-top: 10px;">Failed exams:</p>
+          <ul style="margin: 10px 0; padding-left: 20px;">
+            ${failedExams.map(code => `<li>${code}</li>`).join('')}
+          </ul>
+          <p style="margin-top: 10px; color: #6b7280; font-size: 14px;">
+            These exams may need manual room assignment or have no available rooms in their department.
+          </p>
+        </div>
+      `,
+      type: 'warning',
+      confirmButtonText: 'OK'
+    });
+  } else {
+    this.showToast(
+      'Failed',
+      `Could not assign rooms to ${failedCount} exams. No available rooms found.`,
+      'warning'
+    );
+  }
+}
+
+// 2. Helper: Get summary of TBD rooms by department
+getTBDRoomsSummary(): { total: number; byDept: { [dept: string]: number } } {
+  const summary = {
+    total: 0,
+    byDept: {} as { [dept: string]: number }
+  };
+
+  this.generatedSchedule.forEach(exam => {
+    const room = exam.ROOM.toUpperCase().trim();
+    if (room === 'TBD' || room === 'Please assign room') {
+      summary.total++;
+      
+      const dept = exam.DEPT_SUB || 'Unknown';
+      if (!summary.byDept[dept]) {
+        summary.byDept[dept] = 0;
+      }
+      summary.byDept[dept]++;
+    }
+  });
+
+  return summary;
+}
+
+// 3. Show detailed TBD rooms report
+showTBDRoomsReport() {
+  const summary = this.getTBDRoomsSummary();
+
+  if (summary.total === 0) {
+    Swal.fire({
+      title: 'All Rooms Assigned!',
+      text: 'No exams with TBD or unassigned rooms.',
+      type: 'success'
+    });
+    return;
+  }
+
+  const deptBreakdown = Object.entries(summary.byDept)
+    .sort((a, b) => b[1] - a[1])
+    .map(([dept, count]) => `<li><strong>${dept}:</strong> ${count} exam(s)</li>`)
+    .join('');
+
+  Swal.fire({
+    title: 'Unassigned Rooms Report',
+    html: `
+      <div style="text-align: left; padding: 15px;">
+        <p><strong>Total exams needing rooms: ${summary.total}</strong></p>
+        <p style="margin-top: 15px;">Breakdown by department:</p>
+        <ul style="margin: 10px 0; padding-left: 20px;">
+          ${deptBreakdown}
+        </ul>
+        <p style="margin-top: 15px; color: #3b82f6; font-weight: 600;">
+          Click "Auto-Assign Rooms" to automatically assign available rooms based on department preferences.
+        </p>
+      </div>
+    `,
+    type: 'info',
+    showCancelButton: true,
+    confirmButtonText: 'Auto-Assign Rooms',
+    cancelButtonText: 'Close'
+  }).then((result) => {
+    if (result.value) {
+      this.autoAssignTBDRooms();
+    }
+  });
+}
+
+
+getTBDExamsCount(): number {
+  if (!this.generatedSchedule) return 0;
+  return this.generatedSchedule.filter(e => {
+    const room = e.ROOM ? e.ROOM.toUpperCase().trim() : '';
+    return room === 'TBD' || room === 'Please assign room';
+  }).length;
+}
 
 
 }
