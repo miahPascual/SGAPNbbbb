@@ -52,6 +52,8 @@ interface ScheduledExam {
   SLOT_INDEX?: number;
   TOTAL_SLOTS?: number;
   durationHours?: number;
+  HAS_ROOM_CONFLICT?: boolean;
+  HAS_PROCTOR_CONFLICT?: boolean;
 }
 
 interface ProctorAssignment {
@@ -1034,8 +1036,11 @@ detectProctorConflicts() {
   
   // Reset
   this.conflictingExams = [];
+    this.conflictDetails.proctorConflicts = [];
+
   this.availableProctors.clear();
-  
+    this.generatedSchedule.forEach(exam => exam.HAS_PROCTOR_CONFLICT = false);
+
   // Reset only proctor conflicts
   this.conflictDetails.proctorConflicts = [];
 
@@ -1078,7 +1083,7 @@ detectProctorConflicts() {
         });
         
         exams.forEach(exam => {
-          exam.HAS_CONFLICT = true;
+          exam.HAS_PROCTOR_CONFLICT = true;
           if (!this.conflictingExams.includes(exam)) {
             this.conflictingExams.push(exam);
           }
@@ -1088,6 +1093,7 @@ detectProctorConflicts() {
       }
     });
   });
+  console.log(`Proctor Conflicts: ${this.conflictingExams.length}`);
 
   console.log(`\n📊 Proctor Conflicts: ${totalProctorConflicts}`);
 
@@ -1108,7 +1114,7 @@ detectScheduleConflicts() {
 
   // Clear HAS_CONFLICT flag first
   this.generatedSchedule.forEach(exam => {
-    exam.HAS_CONFLICT = false;
+    exam.HAS_ROOM_CONFLICT = false;
   });
 
   // Group exams by day and slot
@@ -1152,7 +1158,7 @@ detectScheduleConflicts() {
         });
         
         exams.forEach(exam => {
-          exam.HAS_CONFLICT = true;
+          exam.HAS_ROOM_CONFLICT = true;
         });
         
         console.error(`🚨 ROOM CONFLICT: Room ${room} assigned to ${exams.length} exams at ${day} ${slot}`);
@@ -1164,7 +1170,7 @@ detectScheduleConflicts() {
   this.generatedSchedule.forEach(exam => {
     const room = exam.ROOM.toUpperCase().trim();
     if (!room || room === 'TBD' || room === 'PLEASE ASSIGN ROOM') {
-      exam.HAS_CONFLICT = true;
+      exam.HAS_ROOM_CONFLICT = true;
       totalTBDRooms++;
     }
   });

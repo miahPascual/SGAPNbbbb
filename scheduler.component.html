@@ -163,129 +163,111 @@
 
   <!-- STEP 2: GENERATED SCHEDULE -->
   <div *ngIf="currentStep === 'generate'" class="card">
+    
     <div class="card-header">
-  <h2>Generated Schedule</h2>
-  <div class="button-group">
-    <button class="btn btn-outline" (click)="downloadScheduleCSV()">
-      💾 Download CSV
-    </button>
-    <button 
-      class="btn"
-      [class.btn-warning]="getTotalConflicts() > 0"
-      [class.btn-success]="getTotalConflicts() === 0"
-      (click)="showConflictPanel = true">
-      <mat-icon>{{ getTotalConflicts() > 0 ? 'warning' : 'check_circle' }}</mat-icon>
-     Exams with No Rooms
-      <span class="badge" *ngIf="getTotalConflicts() > 0">{{ getTotalConflicts() }}</span>
-    </button>
-  </div>
-</div>
+        <h2>Generated Schedule</h2>
+        <div class="button-group">
+            <button class="btn btn-outline" (click)="downloadScheduleCSV()">
+              💾 Download CSV
+            </button>
+            <button 
+              class="btn"
+              [class.btn-warning]="getTotalConflicts() > 0"
+              [class.btn-success]="getTotalConflicts() === 0"
+              (click)="showConflictPanel = true">
+              <mat-icon>{{ getTotalConflicts() > 0 ? 'warning' : 'check_circle' }}</mat-icon>
+              Exams with No Rooms
+              <span class="badge" *ngIf="getTotalConflicts() > 0">{{ getTotalConflicts() }}</span>
+            </button>
+        </div>
+    </div>
 
     <p class="subtitle">{{ generatedSchedule.length }} exams scheduled</p>
 
-    
     <!-- NEW: Search Bar -->
-      <div class="enhanced-filter-section">
-    <!-- Search Bar -->
-    <div class="filter-row">
-      <mat-form-field appearance="outline" class="search-field-wide">
-        <mat-label>🔍 Search exams...</mat-label>
-        <input 
-          matInput 
-          [(ngModel)]="searchQuery" 
-          (ngModelChange)="applyGeneratedFilters()"
-          placeholder="Search by code, subject, title, instructor, or department"
-        />
-        <button mat-icon-button matSuffix *ngIf="searchQuery" (click)="searchQuery=''; applyGeneratedFilters()">
-          <mat-icon>close</mat-icon>
-        </button>
-      </mat-form-field>
+    <div class="enhanced-filter-section">
+        <div class="filter-row">
+            <mat-form-field appearance="outline" class="search-field-wide">
+                <mat-label>🔍 Search exams...</mat-label>
+                <input 
+                    matInput 
+                    [(ngModel)]="searchQuery" 
+                    (ngModelChange)="applyGeneratedFilters()"
+                    placeholder="Search by code, subject, title, instructor, or department"
+                />
+                <button mat-icon-button matSuffix *ngIf="searchQuery" (click)="searchQuery=''; applyGeneratedFilters()">
+                    <mat-icon>close</mat-icon>
+                </button>
+            </mat-form-field>
+        </div>
+
+        <!-- Cascading Filters -->
+        <div class="filter-row">
+            <!-- Step 1: Department -->
+            <div class="filter-group">
+                <mat-form-field appearance="outline">
+                    <mat-label>🏛️ Step 1: Select Department</mat-label>
+                    <mat-select 
+                        [(ngModel)]="selectedGeneratedDept"
+                        (selectionChange)="onGeneratedDeptChange()">
+                        <mat-option value="">All Departments</mat-option>
+                        <mat-option *ngFor="let dept of uniqueGeneratedDepartments" [value]="dept">
+                            {{ dept }}
+                        </mat-option>
+                    </mat-select>
+                </mat-form-field>
+            </div>
+
+            <!-- Step 2: Program -->
+            <div class="filter-group">
+                <mat-form-field appearance="outline">
+                    <mat-label>📚 Step 2: Select Program</mat-label>
+                    <mat-select 
+                        [(ngModel)]="selectedGeneratedCourse"
+                        (selectionChange)="onGeneratedCourseChange()"
+                        [disabled]="!selectedGeneratedDept">
+                        <mat-option value="">All Programs</mat-option>
+                        <mat-option *ngFor="let course of availableGeneratedCourses" [value]="course">
+                            {{ course }}
+                        </mat-option>
+                    </mat-select>
+                    <mat-hint *ngIf="!selectedGeneratedDept">Select a department first</mat-hint>
+                </mat-form-field>
+            </div>
+
+            <!-- Step 3: Year -->
+            <div class="filter-group">
+                <mat-form-field appearance="outline">
+                    <mat-label>🎓 Step 3: Select Year Level</mat-label>
+                    <mat-select 
+                        [(ngModel)]="selectedGeneratedYear"
+                        (selectionChange)="applyGeneratedFilters()"
+                        [disabled]="!selectedGeneratedCourse">
+                        <mat-option [value]="null">All Years</mat-option>
+                        <mat-option *ngFor="let year of availableGeneratedYears" [value]="year">
+                            Year {{ year }}
+                        </mat-option>
+                    </mat-select>
+                    <mat-hint *ngIf="!selectedGeneratedCourse">Select a program first</mat-hint>
+                </mat-form-field>
+            </div>
+
+            <!-- Clear Filters Button -->
+            <button 
+                class="btn btn-outline-sm" 
+                (click)="clearGeneratedFilters()"
+                *ngIf="selectedGeneratedDept || selectedGeneratedCourse || selectedGeneratedYear || searchQuery">
+                <mat-icon>clear_all</mat-icon>
+                Clear Filters
+            </button>
+        </div>
+
+        <!-- Results Count -->
+        <div class="results-info">
+            <mat-icon>info</mat-icon>
+            <span>Showing {{ filteredSchedule.length }} of {{ generatedSchedule.length }} exams</span>
+        </div>
     </div>
-
-    <!-- Cascading Filters: Department → Program → Year -->
-    <div class="filter-row">
-      <!-- Step 1: Department Filter -->
-      <div class="filter-group">
-        <mat-form-field appearance="outline">
-          <mat-label>🏛️ Step 1: Select Department</mat-label>
-          <mat-select 
-            [(ngModel)]="selectedGeneratedDept"
-            (selectionChange)="onGeneratedDeptChange()">
-            <mat-option value="">All Departments</mat-option>
-            <mat-option *ngFor="let dept of uniqueGeneratedDepartments" [value]="dept">
-              {{ dept }}
-            </mat-option>
-          </mat-select>
-        </mat-form-field>
-      </div>
-
-      <!-- Step 2: Program Filter (enabled after department) -->
-      <div class="filter-group">
-        <mat-form-field appearance="outline">
-          <mat-label>📚 Step 2: Select Program</mat-label>
-          <mat-select 
-            [(ngModel)]="selectedGeneratedCourse"
-            (selectionChange)="onGeneratedCourseChange()"
-            [disabled]="!selectedGeneratedDept">
-            <mat-option value="">All Programs</mat-option>
-            <mat-option *ngFor="let course of availableGeneratedCourses" [value]="course">
-              {{ course }}
-            </mat-option>
-          </mat-select>
-          <mat-hint *ngIf="!selectedGeneratedDept">Select a department first</mat-hint>
-        </mat-form-field>
-      </div>
-
-      <!-- Step 3: Year Level Filter (enabled after program) -->
-      <div class="filter-group">
-        <mat-form-field appearance="outline">
-          <mat-label>🎓 Step 3: Select Year Level</mat-label>
-          <mat-select 
-            [(ngModel)]="selectedGeneratedYear"
-            (selectionChange)="applyGeneratedFilters()"
-            [disabled]="!selectedGeneratedCourse">
-            <mat-option [value]="null">All Years</mat-option>
-            <mat-option *ngFor="let year of availableGeneratedYears" [value]="year">
-              Year {{ year }}
-            </mat-option>
-          </mat-select>
-          <mat-hint *ngIf="!selectedGeneratedCourse">Select a program first</mat-hint>
-        </mat-form-field>
-      </div>
-
-      <!-- Clear Filters Button -->
-      <button 
-        class="btn btn-outline-sm" 
-        (click)="clearGeneratedFilters()"
-        *ngIf="selectedGeneratedDept || selectedGeneratedCourse || selectedGeneratedYear || searchQuery">
-        <mat-icon>clear_all</mat-icon>
-        Clear Filters
-      </button>
-    </div>
-
-    <!-- Active Filters Display
-    <div class="active-filters" *ngIf="selectedGeneratedDept || selectedGeneratedCourse || selectedGeneratedYear">
-      <span class="filter-label">Active Filters:</span>
-      <span class="filter-chip" *ngIf="selectedGeneratedDept">
-        <strong>Dept:</strong> {{ selectedGeneratedDept }}
-        <button (click)="selectedGeneratedDept=''; onGeneratedDeptChange()">✕</button>
-      </span>
-      <span class="filter-chip" *ngIf="selectedGeneratedCourse">
-        <strong>Program:</strong> {{ selectedGeneratedCourse }}
-        <button (click)="selectedGeneratedCourse=''; onGeneratedCourseChange()">✕</button>
-      </span>
-      <span class="filter-chip" *ngIf="selectedGeneratedYear">
-        <strong>Year:</strong> {{ selectedGeneratedYear }}
-        <button (click)="selectedGeneratedYear=null; applyGeneratedFilters()">✕</button>
-      </span>
-    </div> -->
-
-    <!-- Results Count -->
-    <div class="results-info">
-      <mat-icon>info</mat-icon>
-      <span>Showing {{ filteredSchedule.length }} of {{ generatedSchedule.length }} exams</span>
-    </div>
-  </div>
 
     <div class="table-responsive">
       <table class="data-table">
@@ -305,198 +287,161 @@
             <th>Actions</th>
           </tr>
         </thead>
-        <!-- REPLACE YOUR TABLE BODY WITH THIS -->
-<tbody>
-  <!-- ✅ KEY FIX: Use idx instead of index, check editingRow === idx -->
-  <tr *ngFor="let exam of displayedSchedule; let idx = index; trackBy: trackByExam"
-      [class.conflict-row]="exam.HAS_CONFLICT">
-    
-    <!-- CODE COLUMN -->
-    <td>
-      <mat-icon *ngIf="exam.HAS_CONFLICT" class="conflict-indicator" title="This exam has conflicts">
-        warning
-      </mat-icon>
-      <!-- ✅ Check: editingRow === idx (not isExamBeingEdited) -->
-      <input 
-        *ngIf="editingRow === idx" 
-        class="form-control-sm" 
-        [(ngModel)]="editedExam.CODE"
-      />
-      <span *ngIf="editingRow !== idx">{{ exam.CODE }}</span>
-    </td>
 
-    <!-- SUBJECT_ID COLUMN -->
-    <td>{{ exam.SUBJECT_ID }}</td>
+        <!-- TABLE BODY -->
+        <tbody>
+          <tr *ngFor="let exam of displayedSchedule; let idx = index; trackBy: trackByExam"
+    [class.conflict-row]="currentStep === 'generate' ? exam.HAS_ROOM_CONFLICT : exam.HAS_PROCTOR_CONFLICT">
 
-    <!-- TITLE COLUMN -->
-    <td class="truncate">{{ exam.DESCRIPTIVE_TITLE }}</td>
-
-    <!-- COURSE COLUMN -->
-    <td>{{ exam.COURSE }}</td>
-
-    <!-- COURSE DEPT COLUMN -->
-    <td>{{ exam.DEPT_SUB }}</td>
-
-    <!-- YEAR LEVEL COLUMN -->
-    <td>
-      <span class="year-level-badge">{{ exam.YEAR_LEVEL }}</span>
-    </td>
-
-    <!-- INSTRUCTOR COLUMN -->
-    <td>{{ exam.INSTRUCTOR }}</td>
-
-    <!-- DEPT COLUMN -->
-    <td>{{ exam.DEPT }}</td>
-
-    <!-- DAY COLUMN -->
-    <td>
-      <!-- EDITING MODE -->
-      <div *ngIf="editingRow === idx" class="edit-step-container">
-        <div class="step-label">
-          <span class="step-number">1</span>
-          <span class="step-text">Select Day</span>
-        </div>
-        <mat-form-field appearance="outline" class="edit-field">
-          <mat-label>Choose Day</mat-label>
-          <mat-select 
-            [(ngModel)]="editedExam.DAY"
-            (ngModelChange)="onEditDayChange()">
-            <mat-option value="">-- Select Day --</mat-option>
-            <mat-option *ngFor="let d of days; let i = index" [value]="d">
-              <div class="day-option">
-                <span class="day-name">{{ d }}</span>
-                <span class="day-date" *ngIf="examDates[i]">{{ examDates[i] | date:'MMM dd' }}</span>
-              </div>
-            </mat-option>
-          </mat-select>
-        </mat-form-field>
-      </div>
-
-      <!-- DISPLAY MODE -->
-      <span *ngIf="editingRow !== idx" class="display-value">{{ exam.DAY }}</span>
-    </td>
-
-    <!-- SLOT/TIME COLUMN -->
-    <td>
-      <!-- EDITING MODE -->
-      <div *ngIf="editingRow === idx" class="edit-step-container">
-        <div class="step-label">
-          <span class="step-number" [class.disabled]="!editedExam.DAY">2</span>
-          <span class="step-text">Select Time</span>
-        </div>
-        <mat-form-field appearance="outline" class="edit-field">
-          <mat-label>Choose Time Slot</mat-label>
-          <mat-select 
-            [(ngModel)]="editedExam.SLOT"
-            (ngModelChange)="onEditSlotChange()"
-            [disabled]="!editedExam.DAY || availableSlots.length === 0">
-            <mat-option value="">-- Select Time --</mat-option>
-            <mat-option *ngFor="let s of availableSlots" [value]="s">
-              <div class="time-option">
-                <mat-icon class="time-icon">schedule</mat-icon>
-                <span>{{ s }}</span>
-              </div>
-            </mat-option>
-          </mat-select>
-          <mat-hint *ngIf="!editedExam.DAY">Select a day first</mat-hint>
-          <mat-hint *ngIf="editedExam.DAY && availableSlots.length === 0" class="warning-hint">
-            No available slots
-          </mat-hint>
-          <mat-hint *ngIf="editedExam.DAY && availableSlots.length > 0" class="success-hint">
-            {{ availableSlots.length }} slots available
-          </mat-hint>
-        </mat-form-field>
-      </div>
-
-      <!-- DISPLAY MODE - Show merged time for multi-slot exams -->
-      <span *ngIf="editingRow !== idx" class="display-value">{{ getMergedTimeDisplay(exam) }}</span>
-    </td>
-
-    <!-- ROOM COLUMN -->
-    <td>
-      <!-- EDITING MODE -->
-      <div *ngIf="editingRow === idx" class="edit-step-container">
-        <div class="step-label">
-          <span class="step-number" [class.disabled]="!editedExam.SLOT">3</span>
-          <span class="step-text">Select Room</span>
-        </div>
-        <mat-form-field appearance="outline" class="edit-field">
-          <mat-label>Choose Room</mat-label>
-          <mat-select 
-            [(ngModel)]="editedExam.ROOM"
-            [disabled]="!editedExam.SLOT || availableRooms.length === 0">
-            <mat-option value="">-- Select Room --</mat-option>
             
-            <!-- Show rooms with recommendation indicators -->
-            <mat-option *ngFor="let r of availableRooms" [value]="r">
-              <div class="room-option">
-                <mat-icon class="room-icon" 
-                          [class.recommended]="getRoomRecommendation(editedExam, r)">
-                  {{ getRoomRecommendation(editedExam, r) ? 'star' : 'meeting_room' }}
-                </mat-icon>
-                <span [class.recommended-text]="getRoomRecommendation(editedExam, r)">
-                  Room {{ r }}
-                </span>
-                <span class="room-badge" *ngIf="getRoomRecommendation(editedExam, r)">
-                  Dept Match
-                </span>
+            <!-- CODE -->
+            <td>
+              <mat-icon *ngIf="exam.HAS_ROOM_CONFLICT" class="conflict-indicator" title="This exam has conflicts">
+                warning
+              </mat-icon>
+              <input *ngIf="editingRow === idx" class="form-control-sm" [(ngModel)]="editedExam.CODE"/>
+              <span *ngIf="editingRow !== idx">{{ exam.CODE }}</span>
+            </td>
+
+            <td>{{ exam.SUBJECT_ID }}</td>
+
+            <td class="truncate">{{ exam.DESCRIPTIVE_TITLE }}</td>
+
+            <td>{{ exam.COURSE }}</td>
+
+            <td>{{ exam.DEPT_SUB }}</td>
+
+            <td><span class="year-level-badge">{{ exam.YEAR_LEVEL }}</span></td>
+
+            <td>{{ exam.INSTRUCTOR }}</td>
+
+            <td>{{ exam.DEPT }}</td>
+
+            <!-- DAY -->
+            <td>
+              <div *ngIf="editingRow === idx" class="edit-step-container">
+                <div class="step-label"><span class="step-number">1</span><span class="step-text">Select Day</span></div>
+                <mat-form-field appearance="outline" class="edit-field">
+                  <mat-label>Choose Day</mat-label>
+                  <mat-select [(ngModel)]="editedExam.DAY" (ngModelChange)="onEditDayChange()">
+                    <mat-option value="">-- Select Day --</mat-option>
+                    <mat-option *ngFor="let d of days; let i = index" [value]="d">
+                      <div class="day-option">
+                        <span class="day-name">{{ d }}</span>
+                        <span class="day-date" *ngIf="examDates[i]">{{ examDates[i] | date:'MMM dd' }}</span>
+                      </div>
+                    </mat-option>
+                  </mat-select>
+                </mat-form-field>
               </div>
-            </mat-option>
-          </mat-select>
-          
-          <mat-hint *ngIf="!editedExam.SLOT">Select a time slot first</mat-hint>
-          <mat-hint *ngIf="editedExam.SLOT && availableRooms.length === 0" class="warning-hint">
-            ⚠️ No available rooms for this slot
-          </mat-hint>
-          <mat-hint *ngIf="editedExam.SLOT && availableRooms.length > 0" class="success-hint">
-            ✓ {{ availableRooms.length }} rooms available
-            <span *ngIf="hasRecommendedRooms(editedExam)"> | ⭐ Department matches shown first</span>
-          </mat-hint>
-        </mat-form-field>
-      </div>
+              <span *ngIf="editingRow !== idx" class="display-value">{{ exam.DAY }}</span>
+            </td>
 
-      <!-- DISPLAY MODE -->
-      <span *ngIf="editingRow !== idx" class="display-value">{{ exam.ROOM }}</span>
-    </td>
+            <!-- TIME -->
+            <td>
+              <div *ngIf="editingRow === idx" class="edit-step-container">
+                <div class="step-label">
+                  <span class="step-number" [class.disabled]="!editedExam.DAY">2</span>
+                  <span class="step-text">Select Time</span>
+                </div>
 
-    <!-- ACTIONS COLUMN -->
-    <td>
-      <!-- EDITING MODE - Show Save/Cancel buttons -->
-      <div *ngIf="editingRow === idx" class="action-buttons">
-        <button class="btn-icon btn-success" (click)="saveEdit()" title="Save changes">
-          ✓
-        </button>
-        <button class="btn-icon btn-danger" (click)="cancelEdit()" title="Cancel editing">
-          ✗
-        </button>
-      </div>
+                <mat-form-field appearance="outline" class="edit-field">
+                  <mat-label>Choose Time Slot</mat-label>
+                  <mat-select 
+                    [(ngModel)]="editedExam.SLOT"
+                    (ngModelChange)="onEditSlotChange()"
+                    [disabled]="!editedExam.DAY || availableSlots.length === 0">
+                    <mat-option value="">-- Select Time --</mat-option>
+                    <mat-option *ngFor="let s of availableSlots" [value]="s">
+                      <div class="time-option">
+                        <mat-icon class="time-icon">schedule</mat-icon>
+                        <span>{{ s }}</span>
+                      </div>
+                    </mat-option>
+                  </mat-select>
 
-      <!-- DISPLAY MODE - Show Edit button -->
-      <button *ngIf="editingRow !== idx" 
-              class="btn-icon" 
-              (click)="startEdit(idx)" 
-              title="Edit this exam">
-        ✏️
-      </button>
-    </td>
-  </tr>
-</tbody>
+                  <mat-hint *ngIf="!editedExam.DAY">Select a day first</mat-hint>
+                  <mat-hint *ngIf="editedExam.DAY && availableSlots.length === 0" class="warning-hint">No available slots</mat-hint>
+                  <mat-hint *ngIf="editedExam.DAY && availableSlots.length > 0" class="success-hint">
+                    {{ availableSlots.length }} slots available
+                  </mat-hint>
+                </mat-form-field>
+              </div>
+
+              <span *ngIf="editingRow !== idx" class="display-value">{{ getMergedTimeDisplay(exam) }}</span>
+            </td>
+
+            <!-- ROOM -->
+            <td>
+              <div *ngIf="editingRow === idx" class="edit-step-container">
+                <div class="step-label">
+                  <span class="step-number" [class.disabled]="!editedExam.SLOT">3</span>
+                  <span class="step-text">Select Room</span>
+                </div>
+
+                <mat-form-field appearance="outline" class="edit-field">
+                  <mat-label>Choose Room</mat-label>
+                  <mat-select 
+                    [(ngModel)]="editedExam.ROOM"
+                    [disabled]="!editedExam.SLOT || availableRooms.length === 0">
+
+                    <mat-option value="">-- Select Room --</mat-option>
+
+                    <mat-option *ngFor="let r of availableRooms" [value]="r">
+                      <div class="room-option">
+                        <mat-icon class="room-icon" [class.recommended]="getRoomRecommendation(editedExam, r)">
+                          {{ getRoomRecommendation(editedExam, r) ? 'star' : 'meeting_room' }}
+                        </mat-icon>
+                        <span [class.recommended-text]="getRoomRecommendation(editedExam, r)">Room {{ r }}</span>
+                        <span class="room-badge" *ngIf="getRoomRecommendation(editedExam, r)">Dept Match</span>
+                      </div>
+                    </mat-option>
+                  </mat-select>
+
+                  <mat-hint *ngIf="!editedExam.SLOT">Select a time slot first</mat-hint>
+                  <mat-hint *ngIf="editedExam.SLOT && availableRooms.length === 0" class="warning-hint">
+                    ⚠️ No available rooms for this slot
+                  </mat-hint>
+                  <mat-hint *ngIf="editedExam.SLOT && availableRooms.length > 0" class="success-hint">
+                    ✓ {{ availableRooms.length }} rooms available
+                    <span *ngIf="hasRecommendedRooms(editedExam)"> | ⭐ Department matches shown first</span>
+                  </mat-hint>
+                </mat-form-field>
+              </div>
+
+              <span *ngIf="editingRow !== idx" class="display-value">{{ exam.ROOM }}</span>
+            </td>
+
+            <!-- ACTIONS -->
+            <td>
+              <div *ngIf="editingRow === idx" class="action-buttons">
+                <button class="btn-icon btn-success" (click)="saveEdit()" title="Save changes">✓</button>
+                <button class="btn-icon btn-danger" (click)="cancelEdit()" title="Cancel editing">✗</button>
+              </div>
+
+              <button *ngIf="editingRow !== idx" 
+                class="btn-icon" 
+                (click)="startEdit(idx)"
+                title="Edit this exam">
+                ✏️
+              </button>
+            </td>
+          </tr>
+        </tbody>
       </table>
     </div>
 
     <div class="mt-3">
-     
-
-
-   <button 
-  (click)="openUnscheduledPanel()"
-  class="relative px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600">
-  📋 Unscheduled Exams
-  <span *ngIf="getUnscheduledCount() > 0" 
-    class="absolute top-0 right-0 bg-red-600 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center">
-    {{ getUnscheduledCount() }}
-  </span>
-</button>
+      <button 
+        (click)="openUnscheduledPanel()"
+        class="relative px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600">
+        📋 Unscheduled Exams
+        <span *ngIf="getUnscheduledCount() > 0"
+          class="absolute top-0 right-0 bg-red-600 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center">
+          {{ getUnscheduledCount() }}
+        </span>
+      </button>
+    </div>
 
   </div>
     <!-- CONFLICT PANEL -->
@@ -1266,10 +1211,10 @@
       <!-- SCROLLABLE TBODY -->
       <tbody>
         <tr *cdkVirtualFor="let exam of filteredProctorListEnhanced; trackBy: trackByExamCode"
-         [class.conflict-row]="exam.HAS_CONFLICT">
+         [class.conflict-row]="exam.HAS_PROCTOR_CONFLICT">
 
          <td style="width: 80px;">
-    <mat-icon *ngIf="exam.HAS_CONFLICT" 
+    <mat-icon *ngIf="exam.HAS_PROCTOR_CONFLICT" 
               class="conflict-indicator-small" 
               title="Conflict">
       warning
@@ -1370,11 +1315,11 @@
 
           <!-- Status Badge -->
           <td style="width: 120px; min-width: 120px; max-width: 120px;">
-            <span *ngIf="!exam.HAS_CONFLICT && exam.PROCTOR && exam.PROCTOR !== 'TBD'" 
+            <span *ngIf="!exam.HAS_PROCTOR_CONFLICT && exam.PROCTOR && exam.PROCTOR !== 'TBD'" 
                   class="status-badge status-ok">
               ✓ Assigned
             </span>
-            <span *ngIf="exam.HAS_CONFLICT" class="status-badge status-conflict">
+            <span *ngIf="exam.HAS_PROCTOR_CONFLICT" class="status-badge status-conflict">
               ⚠ Conflict
             </span>
             <span *ngIf="!exam.PROCTOR || exam.PROCTOR === 'TBD'" 
