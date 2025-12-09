@@ -112,6 +112,14 @@
 
     <button 
       class="nav-btn"
+      [class.active]="currentStep === 'coursegrid'"
+      (click)="viewCourseGrid()">
+      <mat-icon>grid_on</mat-icon>
+      <span>Course Grid</span>
+    </button>
+
+    <button 
+      class="nav-btn"
       [class.active]="currentStep === 'summary'"
       (click)="viewCourseSummary()">
       <mat-icon>summarize</mat-icon>
@@ -126,13 +134,7 @@
       <span>Time Table</span>
     </button>
 
-    <button 
-      class="nav-btn"
-      [class.active]="currentStep === 'coursegrid'"
-      (click)="viewCourseGrid()">
-      <mat-icon>grid_on</mat-icon>
-      <span>Course Grid</span>
-    </button>
+    
 
     <button 
       class="nav-btn"
@@ -164,114 +166,11 @@
   <!-- STEP 2: GENERATED SCHEDULE -->
   <div *ngIf="currentStep === 'generate'" class="card">
     
-
     <div class="card-header">
-  <h2>Generated Schedule</h2>
-  <div class="button-group">
-    <button class="btn btn-outline" (click)="downloadScheduleCSV()">
-      💾 Download CSV
-    </button>
-    
-    <!-- ✅ NEW: Auto-Assign Rooms Button -->
-    <button 
-      class="btn btn-primary"
-      (click)="autoAssignTBDRooms()"
-      *ngIf="getTotalConflicts() > 0"
-      title="Automatically assign available rooms to exams with 'TBD' or 'Please assign room'">
-      <mat-icon>meeting_room</mat-icon>
-      Auto-Assign Rooms
-    </button>
-    
-    <!-- ✅ NEW: Show TBD Report Button -->
-    <button 
-      class="btn btn-info"
-      (click)="showTBDRoomsReport()"
-      *ngIf="getTotalConflicts() > 0"
-      title="View detailed report of unassigned rooms">
-      <mat-icon>info</mat-icon>
-      Room Report
-    </button>
-    
-    <button 
-      class="btn"
-      [class.btn-warning]="getTotalConflicts() > 0"
-      [class.btn-success]="getTotalConflicts() === 0"
-      (click)="showConflictPanel = true">
-      <mat-icon>{{ getTotalConflicts() > 0 ? 'warning' : 'check_circle' }}</mat-icon>
-      {{ getTotalConflicts() > 0 ? 'View Room Issues' : 'All Rooms OK' }}
-      <span class="badge" *ngIf="getTotalConflicts() > 0">{{ getTotalConflicts() }}</span>
-    </button>
-  </div>
-
-  <style>
-.btn-primary {
-  background: #3b82f6;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 6px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 500;
-  transition: background 0.2s;
-}
-
-.btn-primary:hover {
-  background: #2563eb;
-}
-
-.btn-info {
-  background: #06b6d4;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 6px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 500;
-  transition: background 0.2s;
-}
-
-.btn-info:hover {
-  background: #0891b2;
-}
-</style>
-
-</div>
-
-
-    <!-- <div class="card-header">
         <h2>Generated Schedule</h2>
         <div class="button-group">
-
-            <button class="btn btn-outline" (click)="downloadScheduleCSV()">
-              💾 Download CSV
-            </button>
-
-            <button 
-      class="btn btn-primary"
-      (click)="autoAssignTBDRooms()"
-      *ngIf="getTotalConflicts() > 0"
-      title="Automatically assign available rooms to exams with 'TBD' or 'Please assign room'">
-      <mat-icon>meeting_room</mat-icon>
-      Auto-Assign Rooms
-    </button> -->
-    
-    <!-- ✅ NEW: Show TBD Report Button -->
-    <!-- <button 
-      class="btn btn-info"
-      (click)="showTBDRoomsReport()"
-      *ngIf="getTotalConflicts() > 0"
-      title="View detailed report of unassigned rooms">
-      <mat-icon>info</mat-icon>
-      Room Report
-    </button>
-
-            <button 
+            
+            <!-- <button 
               class="btn"
               [class.btn-warning]="getTotalConflicts() > 0"
               [class.btn-success]="getTotalConflicts() === 0"
@@ -279,10 +178,42 @@
               <mat-icon>{{ getTotalConflicts() > 0 ? 'warning' : 'check_circle' }}</mat-icon>
               Exams with No Rooms
               <span class="badge" *ngIf="getTotalConflicts() > 0">{{ getTotalConflicts() }}</span>
-            </button>
-
+            </button> -->
         </div>
-    </div> -->
+
+        
+    <button 
+    (click)="showTBDRoomsReport()"
+    [disabled]="getTBDExamsCount() === 0"
+    class="btn btn-info"
+    style="display: flex; align-items: center; gap: 8px;">
+    <i class="fa fa-clipboard-list"></i>
+    TBD Rooms Report
+    <span *ngIf="getTBDExamsCount() > 0" 
+          class="badge badge-warning" 
+          style="background: #ef4444; margin-left: 5px;">
+      {{getTBDExamsCount()}}
+    </span>
+  </button>
+  
+  <button 
+    (click)="autoAssignTBDRooms()"
+    [disabled]="getTBDExamsCount() === 0"
+    class="btn btn-success"
+    style="display: flex; align-items: center; gap: 8px;">
+    <i class="fa fa-magic"></i>
+    Auto-Assign Rooms
+    <span *ngIf="getTBDExamsCount() > 0" 
+          class="badge" 
+          style="background: white; color: #16a34a; margin-left: 5px;">
+      {{getTBDExamsCount()}}
+    </span>
+  </button>
+
+  <button class="btn btn-outline" (click)="downloadScheduleCSV()">
+              💾 Download CSV
+            </button>
+    </div>
 
     <p class="subtitle">{{ generatedSchedule.length }} exams scheduled</p>
 
@@ -545,6 +476,8 @@
       </button>
     </div>
 
+
+  
   </div>
     <!-- CONFLICT PANEL -->
 <!-- CONFLICT PANEL -->
@@ -919,6 +852,35 @@
   <div class="card-header">
     <h2>Course Grid Editor</h2>
     <!-- <button class="btnback" (click)="goToStep('summary')">⬅ Back</button> -->
+  
+
+    <button 
+    (click)="showTBDRoomsReport()"
+    [disabled]="getTBDExamsCount() === 0"
+    class="btn btn-info"
+    style="display: flex; align-items: center; gap: 8px;">
+    <i class="fa fa-clipboard-list"></i>
+    TBD Rooms Report
+    <span *ngIf="getTBDExamsCount() > 0" 
+          class="badge badge-warning" 
+          style="background: #ef4444; margin-left: 5px;">
+      {{getTBDExamsCount()}}
+    </span>
+  </button>
+  
+  <button 
+    (click)="autoAssignTBDRooms()"
+    [disabled]="getTBDExamsCount() === 0"
+    class="btn btn-success"
+    style="display: flex; align-items: center; gap: 8px;">
+    <i class="fa fa-magic"></i>
+    Auto-Assign Rooms
+    <span *ngIf="getTBDExamsCount() > 0" 
+          class="badge" 
+          style="background: white; color: #16a34a; margin-left: 5px;">
+      {{getTBDExamsCount()}}
+    </span>
+  </button>
   </div>
 
   <!-- FILTERS -->
@@ -1148,14 +1110,14 @@
 
   <!-- Enhanced Summary with Legend -->
   <div class="proctor-summary">
-    <div class="summary-header">
+    <!-- <div class="summary-header">
       <h3>
         <mat-icon>assessment</mat-icon>
         Assignment Overview
       </h3>
       
-    </div>
-
+    </div> -->
+<!-- 
     <div class="summary-stats">
       <div class="stat-card">
         <mat-icon>assignment</mat-icon>
@@ -1171,7 +1133,7 @@
           <span class="stat-number">{{ assignedExams }}</span>
           <span class="stat-label">Assigned</span>
         </div>
-      </div>
+      </div> -->
       
       <!-- <div class="stat-card warning">
         <mat-icon>warning</mat-icon>
@@ -1181,14 +1143,13 @@
         </div>
       </div> -->
       
-      <div class="stat-card">
+      <!-- <div class="stat-card">
         <mat-icon>people</mat-icon>
         <div class="stat-content">
           <span class="stat-number">{{ totalProctors }}</span>
           <span class="stat-label">Proctors</span>
         </div>
-      </div>
-    </div>
+      </div> -->
   </div>
 
 <!-- Enhanced Filter Section with Proper Bindings -->
